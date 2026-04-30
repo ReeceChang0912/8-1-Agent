@@ -19,6 +19,7 @@ const ChatPage: React.FC = () => {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [streamingMessage, setStreamingMessage] = useState('') // 流式消息
   const [isStreaming, setIsStreaming] = useState(false) // 是否正在流式输出
+  const [connectionMode, setConnectionMode] = useState<'websocket' | 'http'>('http') // 连接模式
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null) // WebSocket连接
 
@@ -30,50 +31,57 @@ const ChatPage: React.FC = () => {
     scrollToBottom()
   }, [messages, streamingMessage])
 
-  // 初始化WebSocket连接
+  // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
   useEffect(() => {
     const userId = localStorage.getItem('member_name') || 'anonymous'
-    const ws = new WebSocket(`ws://localhost:8000/api/chat/stream/${userId}`)
     
-    ws.onopen = () => {
-      console.log('WebSocket已连接')
-    }
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
+    try {
+      const ws = new WebSocket(`ws://localhost:8000/api/chat/stream/${userId}`)
       
-      if (data.type === 'typing') {
-        setIsStreaming(true)
-        setStreamingMessage('')
-      } else if (data.type === 'chunk') {
-        // 逐字追加
-        setStreamingMessage(prev => prev + data.data)
-      } else if (data.type === 'complete') {
-        // 完成,添加到消息列表
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.data.full_response,
-          timestamp: new Date(),
-        }
-        setMessages(prev => [...prev, assistantMessage])
-        setStreamingMessage('')
-        setIsStreaming(false)
-        setLoading(false)
+      ws.onopen = () => {
+        console.log('✅ WebSocket已连接 - 启用流式聊天')
+        setConnectionMode('websocket')
       }
-    }
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket错误:', error)
-      message.error('连接失败,使用HTTP模式')
-      // 降级到HTTP模式
-      setLoading(false)
-      setIsStreaming(false)
-    }
-    
-    wsRef.current = ws
-    
-    return () => {
-      ws.close()
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        
+        if (data.type === 'typing') {
+          setIsStreaming(true)
+          setStreamingMessage('')
+        } else if (data.type === 'chunk') {
+          // 逐字追加
+          setStreamingMessage(prev => prev + data.data)
+        } else if (data.type === 'complete') {
+          // 完成,添加到消息列表
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: data.data.full_response,
+            timestamp: new Date(),
+          }
+          setMessages(prev => [...prev, assistantMessage])
+          setStreamingMessage('')
+          setIsStreaming(false)
+          setLoading(false)
+        }
+      }
+      
+      ws.onerror = (error) => {
+        console.warn('⚠️ WebSocket连接失败,使用HTTP模式')
+        // 静默降级,不显示错误提示
+        setLoading(false)
+        setIsStreaming(false)
+      }
+      
+      wsRef.current = ws
+      
+      return () => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close()
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ WebSocket初始化失败,使用HTTP模式')
     }
   }, [])
 
@@ -179,7 +187,14 @@ const ChatPage: React.FC = () => {
   return (
     <div style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
       <Card 
-        title="💬 智能对话" 
+        title={
+          <Space>
+            <span>💬 智能对话</span>
+            <Tag color={connectionMode === 'websocket' ? 'green' : 'orange'}>
+              {connectionMode === 'websocket' ? '🚀 流式模式' : '⚡ HTTP模式'}
+            </Tag>
+          </Space>
+        }
         style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
         bodyStyle={{ flex: 1, overflowY: 'auto', padding: '24px' }}
       >

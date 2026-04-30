@@ -6,11 +6,15 @@ from pydantic import BaseModel
 from typing import Optional
 import json
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from family_agent.core import FamilyAgentCore
 from family_agent.chat_history import ChatHistoryManager
 
 router = APIRouter()
+
+# 线程池用于执行同步的agent.chat()
+executor = ThreadPoolExecutor(max_workers=4)
 
 # 数据模型
 class ChatRequest(BaseModel):
@@ -68,16 +72,19 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
             # 保存用户消息到历史
             chat_history.add_message(user_id, 'user', message)
             
-            # 发送"正在输入"状态
+            # 发送“正在输入”状态
             await manager.send_message(user_id, json.dumps({
                 'type': 'typing',
                 'data': True
             }))
             
-            # 模拟流式输出(逐字发送)
+            # 在线程池中执行同步的agent.chat(),避免阻塞事件循环
+            loop = asyncio.get_event_loop()
             agent = get_agent()
-            response = agent.chat(message, user_id=user_id)
-            emotion = agent.get_last_emotion()
+            response, emotion = await loop.run_in_executor(
+                executor,
+                lambda: (agent.chat(message, user_id=user_id), agent.get_last_emotion())
+            )
             
             # 保存助手消息到历史
             chat_history.add_message(user_id, 'assistant', response, emotion)

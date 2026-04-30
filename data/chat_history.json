@@ -5,6 +5,18 @@
       "content": "你好",
       "emotion": null,
       "timestamp": "2026-04-30T17:44:43.863569"
+    },
+    {
+      "role": "user",
+      "content": "你好",
+      "emotion": null,
+      "timestamp": "2026-04-30T17:55:53.573281"
+    },
+    {
+      "role": "user",
+      "content": "你好",
+      "emotion": null,
+      "timestamp": "2026-04-30T17:56:09.056761"
     }
   ]
 }
