@@ -1,0 +1,13 @@
+[
+  {
+    "id": "log_784584",
+    "user_id": "张三",
+    "action": "login",
+    "resource_type": "session",
+    "resource_id": "test123",
+    "details": "登录测试",
+    "ip_address": "",
+    "success": true,
+    "timestamp": "2026-04-30T17:48:48.624325"
+  }
+]

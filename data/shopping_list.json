@@ -1,0 +1,14 @@
+[
+  {
+    "name": "牛肉",
+    "quantity": "1",
+    "unit": "个",
+    "category": "general",
+    "priority": "normal",
+    "assigned_to": "",
+    "purchased": false,
+    "notes": "",
+    "added_by": "",
+    "added_at": "2026-04-30T17:16:38.568170"
+  }
+]

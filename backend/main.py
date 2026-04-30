@@ -1,0 +1,113 @@
+"""
+FastAPI 后端服务 - 模块化路由版
+提供 RESTful API 接口
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import logging
+from pathlib import Path
+
+from family_agent.core import FamilyAgentCore
+from family_agent.family_auth import FamilyAuthManager
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+# 导入路由模块
+from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# 创建 FastAPI 应用
+app = FastAPI(
+    title="家庭智能管家 API",
+    description="Family Smart Agent Backend API",
+    version="2.0.0 - 模块化路由版"
+)
+
+# 配置 CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 生产环境应该限制具体域名
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 初始化 Agent（单例）
+agent = None
+auth_manager = None
+
+
+def get_agent() -> FamilyAgentCore:
+    """获取 Agent 实例"""
+    global agent
+    if agent is None:
+        agent = FamilyAgentCore(data_dir="data")
+        logger.info("✅ Agent 初始化完成")
+    return agent
+
+
+def get_auth_manager() -> FamilyAuthManager:
+    """获取认证管理器实例"""
+    global auth_manager
+    if auth_manager is None:
+        auth_manager = FamilyAuthManager(
+            families_file="data/families.json",
+            sessions_file="data/sessions.json"
+        )
+        logger.info("✅ 认证管理器初始化完成")
+    return auth_manager
+
+
+# ===== 注册路由 =====
+
+app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
+app.include_router(chat.router, prefix="/api", tags=["聊天"])
+app.include_router(members.router, prefix="/api", tags=["成员管理"])
+app.include_router(shopping.router, prefix="/api", tags=["购物清单"])
+app.include_router(schedule.router, prefix="/api", tags=["日程管理"])
+app.include_router(photos.router, prefix="/api", tags=["照片管理"])
+app.include_router(knowledge.router, prefix="/api", tags=["知识库"])
+app.include_router(skills.router, prefix="/api", tags=["技能中心"])
+app.include_router(smarthome.router, prefix="/api", tags=["智能家居"])
+app.include_router(tasks.router, prefix="/api", tags=["任务管理"])
+app.include_router(stats.router, prefix="/api", tags=["统计信息"])
+app.include_router(notifications.router, prefix="/api", tags=["推送通知"])
+
+
+# ===== 根路径 =====
+
+@app.get("/")
+def root():
+    """API 根路径"""
+    return {
+        "message": "家庭智能管家 API 运行中",
+        "version": "2.0.0",
+        "docs": "/docs"
+    }
+
+
+@app.get("/health")
+def health_check():
+    """健康检查"""
+    return {"status": "ok", "service": "family-agent-api"}
+
+
+# 挂载静态文件服务(照片目录)
+photos_path = Path("photos")
+if photos_path.exists():
+    app.mount("/api/photos", StaticFiles(directory=str(photos_path)), name="photos")
+    logger.info("✅ 照片静态文件服务已挂载: /api/photos")
+else:
+    logger.warning("️ 照片目录不存在，跳过静态文件挂载")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "notif_168514",
+    "member_name": "张三",
+    "title": "测试通知",
+    "message": "这是一条测试消息",
+    "type": "general",
+    "priority": "normal",
+    "scheduled_time": null,
+    "is_read": false,
+    "created_at": "2026-04-30T17:48:44.923878",
+    "read_at": null
+  }
+]

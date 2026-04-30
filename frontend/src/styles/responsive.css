@@ -1,0 +1,85 @@
+/* 响应式设计 */
+
+/* 移动端 (<768px) */
+@media screen and (max-width: 767px) {
+  /* 隐藏侧边栏,使用底部导航 */
+  .ant-layout-sider {
+    display: none !important;
+  }
+  
+  /* 头部简化 */
+  .ant-layout-header {
+    padding: 0 12px !important;
+  }
+  
+  /* 内容区域调整 */
+  .ant-layout-content {
+    margin: 8px !important;
+    padding: 12px !important;
+  }
+  
+  /* 卡片适配 */
+  .ant-card {
+    margin-bottom: 8px;
+  }
+  
+  /* 聊天消息适配 */
+  .chat-message-card {
+    max-width: 85vw !important;
+  }
+  
+  /* 表格滚动 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  /* 表单适配 */
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+  
+  /* 按钮适配 */
+  .ant-btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  /* 快捷指令横向滚动 */
+  .quick-actions {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* 平板 (768px - 1024px) */
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+  .ant-layout-sider {
+    width: 160px !important;
+  }
+  
+  .ant-card {
+    margin-bottom: 12px;
+  }
+}
+
+/* 桌面 (>1024px) */
+@media screen and (min-width: 1024px) {
+  /* 正常布局 */
+}
+
+/* 通用优化 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 触摸优化 */
+@media (hover: none) and (pointer: coarse) {
+  /* 移动端触摸设备 */
+  .ant-btn, .ant-menu-item {
+    min-height: 44px; /* iOS建议的最小触摸区域 */
+  }
+  
+  input, textarea {
+    font-size: 16px !important; /* 防止iOS自动缩放 */
+  }
+}

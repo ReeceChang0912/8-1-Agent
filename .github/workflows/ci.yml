@@ -1,0 +1,79 @@
+name: Family Agent CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 后端测试
+  backend-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      run: |
+        pip install uv
+    
+    - name: Install dependencies
+      run: |
+        uv pip install -r backend/requirements.txt
+        uv pip install pytest pytest-asyncio pytest-cov
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --cov=family_agent --cov-report=xml
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+
+  # 前端检查
+  frontend-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Type check
+      run: |
+        cd frontend
+        npx tsc --noEmit
+    
+    - name: Build
+      run: |
+        cd frontend
+        npm run build
+
+  # 部署 (仅main分支)
+  deploy:
+    needs: [backend-test, frontend-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Server
+      run: |
+        echo "部署步骤待配置"
+        # 这里可以添加SSH部署、Docker部署等

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  family-agent:
+    build: .
+    container_name: family-agent
+    ports:
+      - "8501:8501"
+    volumes:
+      # 持久化数据
+      - ./data:/app/data
+      - ./photos:/app/photos
+    environment:
+      # LLM配置（可选）
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - QWEN_API_KEY=${QWEN_API_KEY:-}
+      # 其他配置
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - family-network
+
+networks:
+  family-network:
+    driver: bridge

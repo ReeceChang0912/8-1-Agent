@@ -1,0 +1,32 @@
+"""
+智能家居路由
+"""
+from fastapi import APIRouter
+from pydantic import BaseModel
+from typing import Optional
+
+router = APIRouter()
+
+class SmartHomeCommand(BaseModel):
+    command: str
+
+
+def get_agent():
+    from main import get_agent as _get_agent
+    return _get_agent()
+
+
+@router.post("/smarthome/command")
+async def execute_command(cmd_data: SmartHomeCommand):
+    """执行智能家居命令"""
+    agent = get_agent()
+    result = agent.smart_home.execute_command(cmd_data.command)
+    return result
+
+
+@router.get("/smarthome/devices")
+async def get_devices(device_type: Optional[str] = None):
+    """获取设备列表"""
+    agent = get_agent()
+    devices = agent.smart_home.get_devices(device_type)
+    return {"devices": devices}
