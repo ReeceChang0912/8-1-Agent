@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Divider } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined } from '@ant-design/icons'
+import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, AudioOutlined } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition
 
 const { TextArea } = Input
 
@@ -18,6 +19,9 @@ const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [streamingMessage, setStreamingMessage] = useState('') // 流式消息
+  
+  // Voice recognition
+  const { isListening, transcript, startListening, stopListening, error: speechError } = useSpeechRecognition();
   const [isStreaming, setIsStreaming] = useState(false) // 是否正在流式输出
   const [connectionMode, setConnectionMode] = useState<'websocket' | 'http'>('http') // 连接模式
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -27,11 +31,25 @@ const ChatPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // Auto-fill input with voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInputValue(transcript);
+    }
+  }, [transcript]);
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, streamingMessage])
 
   // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
+  // Auto-fill input with voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInputValue(transcript);
+    }
+  }, [transcript]);
+
   useEffect(() => {
     const userId = localStorage.getItem('member_name') || 'anonymous'
     
