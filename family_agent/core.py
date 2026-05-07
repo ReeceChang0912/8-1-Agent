@@ -18,7 +18,6 @@ from .photo_memory import PhotoMemoryManager
 from .smart_photo_analyzer import SmartPhotoAnalyzer
 from .intent_engine import TaskExecutor
 from .task_manager import TaskManager
-from .auth_manager import AuthManager
 from .wechat_integration import WeChatIntegration
 from .smart_home import SmartHomeIntegration
 from .mcp_integration import MCPIntegration
