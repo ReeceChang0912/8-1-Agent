@@ -129,3 +129,30 @@ async def import_data(file: UploadFile = File(...), format: str = 'json'):
     # Clean up
     Path(temp_path).unlink(missing_ok=True)
     return {"success": success}
+
+from family_agent.invite_manager import InviteManager
+
+@router.post("/invite/create")
+async def create_invite(family_id: str, creator: str):
+    """Create invite link"""
+    manager = InviteManager()
+    invite = manager.create_invite(family_id, creator)
+    return invite
+
+@router.get("/invite/{code}")
+async def validate_invite(code: str):
+    """Validate invite code"""
+    manager = InviteManager()
+    invite = manager.validate_invite(code)
+    if invite:
+        return {"valid": True, "invite": invite}
+    return {"valid": False}
+
+@router.get("/invite/{code}/qrcode")
+async def get_qr_code(code: str):
+    """Get QR code for invite"""
+    manager = InviteManager()
+    qr_path = manager.generate_qr_code(code)
+    if qr_path:
+        return FileResponse(qr_path)
+    return {"error": "Failed to generate QR code"}
