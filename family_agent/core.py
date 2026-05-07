@@ -30,13 +30,11 @@ class FamilyAgentCore:
     """家庭智能管家核心引擎"""
     
     def __init__(self, data_dir: str = None):
-        # 默认使用 D 盘存储数据，如果 D 盘不存在则使用当前目录
+        # Use relative path based on project directory
         if data_dir is None:
-            import os
-            if os.path.exists("D:/myAgent/data"):
-                data_dir = "D:/myAgent/data"
-            else:
-                data_dir = "data"
+            from pathlib import Path
+            project_root = Path(__file__).resolve().parent.parent
+            data_dir = str(project_root / "data")
         
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)

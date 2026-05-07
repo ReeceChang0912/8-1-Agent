@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 
 [tool.uv]
 # 设置虚拟环境和缓存目录到 D 盘
-cache-dir = "D:/myAgent/.cache"
+cache-dir = ".cache"
 
 [dependency-groups]
 dev = []

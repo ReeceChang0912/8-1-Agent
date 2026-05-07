@@ -119,8 +119,8 @@ class RoleManager:
     def __init__(self, data_file: str = None):
         if data_file is None:
             import os
-            if os.path.exists("D:/myAgent/data"):
-                data_file = "D:/myAgent/data/members.json"
+            if os.path.exists("data"):
+                data_file = "data/members.json"
             else:
                 data_file = "data/members.json"
         
