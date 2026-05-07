@@ -57,3 +57,11 @@ async def get_shopping_stats():
     stats = agent.shopping_list.get_stats()
     return stats
 
+
+
+@router.get("/suggestions/{member_name}")
+async def get_smart_suggestions(member_name: str):
+    """Get smart shopping suggestions for a member"""
+    agent = get_agent()
+    suggestions = agent.shopping_list.get_smart_suggestions(member_name)
+    return {"suggestions": suggestions}

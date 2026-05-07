@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import json
 from pathlib import Path
+from .smart_shopping import SmartShoppingAdvisor
 
 
 @dataclass
@@ -68,6 +69,7 @@ class ShoppingListManager:
     def __init__(self, data_file: str = "data/shopping_list.json"):
         self.data_file = Path(data_file)
         self.items: List[ShoppingItem] = []
+        self.advisor = SmartShoppingAdvisor(data_dir=str(self.data_file.parent))
         self._load_items()
     
     def add_item(
@@ -240,6 +242,10 @@ class ShoppingListManager:
         
         return removed_count
     
+    def get_smart_suggestions(self, member: str) -> List[Dict]:
+        """Get smart shopping suggestions"""
+        return self.advisor.generate_shopping_suggestions(member)
+
     def _find_similar_item(self, name: str) -> Optional[ShoppingItem]:
         """查找相似的购物项（用于合并）"""
         name_lower = name.lower()
