@@ -2,6 +2,7 @@
 日程管理路由
 """
 from fastapi import APIRouter
+from datetime import datetime
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -30,3 +31,22 @@ async def add_reminder(reminder_data: ReminderCreate):
     agent.reminders.append(reminder_data.dict())
     agent._save_reminders()
     return {"success": True, "message": "日程已添加"}
+
+
+from family_agent.schedule_recommender import SmartScheduleRecommender
+
+@router.get("/recommendations/{member_name}")
+async def get_recommendations(member_name: str, date: str = None):
+    """Get schedule recommendations"""
+    recommender = SmartScheduleRecommender()
+    date = date or datetime.now().strftime('%Y-%m-%d')
+    suggestions = recommender.recommend_schedule(member_name, date)
+    return {"recommendations": suggestions}
+
+@router.get("/free-times/{member_name}")
+async def get_free_times(member_name: str, date: str = None):
+    """Get predicted free time slots"""
+    recommender = SmartScheduleRecommender()
+    date = date or datetime.now().strftime('%Y-%m-%d')
+    free_times = recommender.predict_free_time(member_name, date)
+    return {"free_times": free_times}
