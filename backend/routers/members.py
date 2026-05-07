@@ -104,3 +104,28 @@ async def remove_member(name: str):
     
     agent.remove_member(name)
     return {"success": True, "message": f"成员 {name} 已删除"}
+
+
+from fastapi import UploadFile, File
+from family_agent.data_migration import DataMigrationManager
+
+@router.get("/export")
+async def export_data(format: str = 'json'):
+    """Export all data"""
+    manager = DataMigrationManager()
+    file_path = manager.export_all(format=format)
+    return FileResponse(file_path, filename=f"family_data_export.{format}")
+
+@router.post("/import")
+async def import_data(file: UploadFile = File(...), format: str = 'json'):
+    """Import data from file"""
+    manager = DataMigrationManager()
+    # Save uploaded file
+    temp_path = f"data/temp_import.{format}"
+    with open(temp_path, 'wb') as f:
+        f.write(await file.read())
+    # Import
+    success = manager.import_all(temp_path, format=format)
+    # Clean up
+    Path(temp_path).unlink(missing_ok=True)
+    return {"success": success}
