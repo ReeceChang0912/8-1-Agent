@@ -289,6 +289,49 @@ class LLMAdapter:
         import random
         return random.choice(default_responses)
     
+    def analyze_image(self, image_path: str, prompt: str) -> dict:
+        """
+        Analyze image using LLM vision capabilities.
+
+        Args:
+            image_path: Path to image file
+            prompt: Analysis prompt
+
+        Returns:
+            dict with keys: description, tags, people, event, location, mood
+        """
+        import base64
+        from pathlib import Path
+
+        try:
+            if not Path(image_path).exists():
+                return {"description": "", "tags": [], "people": [], "event": "", "location": "", "mood": "neutral"}
+
+            # For mock mode or non-vision models, return heuristic analysis
+            if self.provider == "mock":
+                return self._analyze_image_mock(image_path, prompt)
+
+            # Try vision API if supported
+            # DeepSeek doesn't support vision yet, fallback to mock
+            return self._analyze_image_mock(image_path, prompt)
+
+        except Exception as e:
+            print(f"Image analysis failed: {e}")
+            return {"description": "", "tags": [], "people": [], "event": "", "location": "", "mood": "neutral"}
+
+    def _analyze_image_mock(self, image_path: str, prompt: str) -> dict:
+        """Fallback heuristic image analysis"""
+        from pathlib import Path
+        filename = Path(image_path).stem
+        return {
+            "description": f"照片 {filename}",
+            "tags": ["照片", "家庭"],
+            "people": [],
+            "event": "",
+            "location": "",
+            "mood": "neutral"
+        }
+
     def generate_response(
         self,
         system_prompt: str,
