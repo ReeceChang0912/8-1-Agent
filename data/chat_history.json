@@ -17,6 +17,12 @@
       "content": "你好",
       "emotion": null,
       "timestamp": "2026-04-30T17:56:09.056761"
+    },
+    {
+      "role": "user",
+      "content": "你好",
+      "emotion": null,
+      "timestamp": "2026-04-30T18:01:02.917789"
     }
   ]
 }

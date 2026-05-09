@@ -1,30 +1,30 @@
 """
-购物清单管理模块
+购物清单管理模块 - PostgreSQL版
 支持共享清单、智能合并、分类管理
 """
-
 from typing import List, Dict, Optional
-from dataclasses import dataclass, field
 from datetime import datetime
-import json
 from pathlib import Path
-from .smart_shopping import SmartShoppingAdvisor
+import json
 
 
-@dataclass
 class ShoppingItem:
-    """购物项"""
-    name: str
-    quantity: str = "1"
-    unit: str = "个"
-    category: str = "general"  # food/daily/electronic/etc.
-    priority: str = "normal"  # high/normal/low
-    assigned_to: str = ""  # 负责人
-    purchased: bool = False
-    notes: str = ""
-    added_by: str = ""
-    added_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    
+    """购物项（数据对象）"""
+    def __init__(self, name: str, quantity: str = "1", unit: str = "个",
+                 category: str = "general", priority: str = "normal",
+                 assigned_to: str = "", purchased: bool = False,
+                 notes: str = "", added_by: str = "", added_at: str = None):
+        self.name = name
+        self.quantity = quantity
+        self.unit = unit
+        self.category = category
+        self.priority = priority
+        self.assigned_to = assigned_to
+        self.purchased = purchased
+        self.notes = notes
+        self.added_by = added_by
+        self.added_at = added_at or datetime.now().isoformat()
+
     def to_dict(self) -> Dict:
         return {
             "name": self.name,
@@ -38,10 +38,6 @@ class ShoppingItem:
             "added_by": self.added_by,
             "added_at": self.added_at
         }
-    
-    @staticmethod
-    def from_dict(data: Dict) -> 'ShoppingItem':
-        return ShoppingItem(**data)
 
 
 class ShoppingListManager:
@@ -66,12 +62,20 @@ class ShoppingListManager:
         "other": "其他"
     }
     
-    def __init__(self, data_file: str = "data/shopping_list.json"):
-        self.data_file = Path(data_file)
-        self.items: List[ShoppingItem] = []
-        self.advisor = SmartShoppingAdvisor(data_dir=str(self.data_file.parent))
-        self._load_items()
-    
+    def __init__(self, db_manager=None, data_dir: str = "data"):
+        """
+        初始化购物清单管理器
+        Args:
+            db_manager: DatabaseManager 实例
+            data_dir: 数据目录（兼容旧接口）
+        """
+        self.db = db_manager
+        self.data_dir = Path(data_dir)
+        self.advisor = None
+        if db_manager:
+            from .smart_shopping import SmartShoppingAdvisor
+            self.advisor = SmartShoppingAdvisor(data_dir=str(self.data_dir))
+
     def add_item(
         self,
         name: str,
@@ -84,118 +88,114 @@ class ShoppingListManager:
         added_by: str = ""
     ) -> ShoppingItem:
         """添加购物项"""
-        
-        # 检查是否已存在相似项
-        existing = self._find_similar_item(name)
-        if existing:
-            # 合并数量
-            try:
-                new_qty = float(existing.quantity) + float(quantity)
-                existing.quantity = str(int(new_qty)) if new_qty == int(new_qty) else str(new_qty)
-                existing.notes += f"\n{notes}" if notes else ""
-                self._save_items()
-                return existing
-            except:
-                pass
-        
-        # 创建新项
-        item = ShoppingItem(
-            name=name,
-            quantity=quantity,
-            unit=unit,
-            category=category,
-            priority=priority,
-            assigned_to=assigned_to,
-            notes=notes,
-            added_by=added_by
+        if self.db:
+            self.db.add_shopping_item(
+                name=name, quantity=quantity, category=category,
+                priority=priority, added_by=added_by, status='pending'
+            )
+        # 返回对象（用于兼容旧接口）
+        return ShoppingItem(
+            name=name, quantity=quantity, category=category,
+            priority=priority, assigned_to=assigned_to,
+            notes=notes, added_by=added_by
         )
-        
-        self.items.append(item)
-        self._save_items()
-        
-        return item
-    
-    def remove_item(self, item_name: str) -> bool:
+
+    def remove_item(self, item_id: int) -> bool:
         """删除购物项"""
-        for i, item in enumerate(self.items):
-            if item.name == item_name:
-                self.items.pop(i)
-                self._save_items()
-                return True
+        if self.db:
+            return self.db.remove_shopping_item(item_id)
         return False
-    
-    def mark_purchased(self, item_name: str) -> bool:
+
+    def mark_purchased(self, item_id: int) -> bool:
         """标记为已购买"""
-        for item in self.items:
-            if item.name == item_name:
-                item.purchased = True
-                self._save_items()
-                return True
+        if self.db:
+            return self.db.update_shopping_item(item_id, status='purchased')
         return False
-    
-    def mark_unpurchased(self, item_name: str) -> bool:
+
+    def mark_unpurchased(self, item_id: int) -> bool:
         """标记为未购买"""
-        for item in self.items:
-            if item.name == item_name:
-                item.purchased = False
-                self._save_items()
-                return True
+        if self.db:
+            return self.db.update_shopping_item(item_id, status='pending')
         return False
-    
+
+    def toggle_purchased(self, item_id: int) -> bool:
+        """切换购买状态"""
+        items = self.get_items()
+        for item in items:
+            if item.get('id') == item_id:
+                if item.get('status') == 'purchased':
+                    return self.mark_unpurchased(item_id)
+                else:
+                    return self.mark_purchased(item_id)
+        return False
+
+    def update_item(self, item_id: int, **kwargs) -> bool:
+        """更新购物项"""
+        if self.db:
+            # 过滤出可更新的字段
+            allowed = {'name', 'quantity', 'category', 'priority', 'notes'}
+            updates = {k: v for k, v in kwargs.items() if k in allowed}
+            return self.db.update_shopping_item(item_id, **updates)
+        return False
+
     def get_items(
         self,
         category: str = None,
         priority: str = None,
         purchased: bool = None,
         assigned_to: str = None
-    ) -> List[ShoppingItem]:
+    ) -> List[Dict]:
         """获取购物项（支持过滤）"""
+        if not self.db:
+            return []
         
-        filtered = self.items
+        # 先获取所有或按状态过滤
+        status = 'purchased' if purchased else ('pending' if purchased is False else None)
+        items = self.db.get_all_shopping_items(status=status)
         
+        # 内存过滤（简化实现）
         if category:
-            filtered = [item for item in filtered if item.category == category]
-        
+            items = [i for i in items if i.get('category') == category]
         if priority:
-            filtered = [item for item in filtered if item.priority == priority]
-        
-        if purchased is not None:
-            filtered = [item for item in filtered if item.purchased == purchased]
-        
+            items = [i for i in items if i.get('priority') == priority]
         if assigned_to:
-            filtered = [item for item in filtered if item.assigned_to == assigned_to]
+            items = [i for i in items if i.get('added_by') == assigned_to]
         
         # 按优先级排序
         priority_order = {"high": 0, "normal": 1, "low": 2}
-        filtered.sort(key=lambda x: priority_order.get(x.priority, 1))
+        items.sort(key=lambda x: priority_order.get(x.get('priority', 'normal'), 1))
         
-        return filtered
-    
+        return items
+
     def get_shopping_summary(self) -> Dict:
         """获取购物清单摘要"""
-        total = len(self.items)
-        purchased = sum(1 for item in self.items if item.purchased)
+        if not self.db:
+            return {}
+        
+        all_items = self.db.get_all_shopping_items()
+        total = len(all_items)
+        purchased = sum(1 for i in all_items if i.get('status') == 'purchased')
         unpurchased = total - purchased
         
         # 按分类统计
         categories = {}
-        for item in self.items:
-            cat = item.category
+        for item in all_items:
+            cat = item.get('category', 'other')
             if cat not in categories:
                 categories[cat] = {"total": 0, "purchased": 0}
             categories[cat]["total"] += 1
-            if item.purchased:
+            if item.get('status') == 'purchased':
                 categories[cat]["purchased"] += 1
         
         # 按负责人统计
         assignees = {}
-        for item in self.items:
-            if item.assigned_to:
-                person = item.assigned_to
+        for item in all_items:
+            person = item.get('added_by', '')
+            if person:
                 if person not in assignees:
                     assignees[person] = {"total": 0, "purchased": 0}
                 assignees[person]["total"] += 1
-                if item.purchased:
+                if item.get('status') == 'purchased':
                     assignees[person]["purchased"] += 1
         
         return {
@@ -206,23 +206,21 @@ class ShoppingListManager:
             "by_category": categories,
             "by_assignee": assignees
         }
-    
+
     def generate_shopping_route(self, store_layout: Dict = None) -> List[str]:
         """
         生成采购路线建议
-        
-        Args:
-            store_layout: 超市布局（可选）
-        
-        Returns:
-            推荐的采购顺序
         """
+        if not self.db:
+            return []
+        
+        items = self.get_items(purchased=False)
         
         # 简化版：按分类分组
         categories_needed = set()
-        for item in self.items:
-            if not item.purchased:
-                categories_needed.add(item.category)
+        for item in items:
+            if not item.get('status') == 'purchased':
+                categories_needed.add(item.get('category', 'other'))
         
         # 默认路线顺序
         default_route = ["food", "daily", "health", "home", "electronics", "clothing", "other"]
@@ -230,46 +228,36 @@ class ShoppingListManager:
         route = [cat for cat in default_route if cat in categories_needed]
         
         return route
-    
+
     def clear_purchased(self) -> int:
         """清除已购买的项"""
-        initial_count = len(self.items)
-        self.items = [item for item in self.items if not item.purchased]
-        removed_count = initial_count - len(self.items)
+        if not self.db:
+            return 0
         
-        if removed_count > 0:
-            self._save_items()
-        
-        return removed_count
-    
-    def get_smart_suggestions(self, member: str) -> List[Dict]:
-        """Get smart shopping suggestions"""
-        return self.advisor.generate_shopping_suggestions(member)
+        items = self.db.get_all_shopping_items(status='purchased')
+        count = len(items)
+        for item in items:
+            self.db.remove_shopping_item(item['id'])
+        return count
 
-    def _find_similar_item(self, name: str) -> Optional[ShoppingItem]:
+    def get_smart_suggestions(self, member: str) -> List[Dict]:
+        """获取智能购物建议"""
+        if self.advisor:
+            return self.advisor.generate_shopping_suggestions(member)
+        return []
+
+    def _find_similar_item(self, name: str) -> Optional[int]:
         """查找相似的购物项（用于合并）"""
+        if not self.db:
+            return None
+        
         name_lower = name.lower()
+        items = self.db.get_all_shopping_items()
         
-        for item in self.items:
-            if item.name.lower() == name_lower:
-                return item
-            
+        for item in items:
+            if item['name'].lower() == name_lower:
+                return item['id']
             # 模糊匹配
-            if name_lower in item.name.lower() or item.name.lower() in name_lower:
-                return item
-        
+            if name_lower in item['name'].lower() or item['name'].lower() in name_lower:
+                return item['id']
         return None
-    
-    def _load_items(self):
-        """加载购物清单"""
-        if self.data_file.exists():
-            with open(self.data_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                self.items = [ShoppingItem.from_dict(item) for item in data]
-    
-    def _save_items(self):
-        """保存购物清单"""
-        self.data_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.data_file, 'w', encoding='utf-8') as f:
-            json.dump([item.to_dict() for item in self.items], 
-                     f, ensure_ascii=False, indent=2)

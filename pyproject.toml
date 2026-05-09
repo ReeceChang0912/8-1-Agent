@@ -2,7 +2,7 @@
 name = "family-agent"
 version = "0.1.0"
 description = "家庭综合智能管家 - 统筹小家庭及双方大家庭事务"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 
 [tool.uv]
 # 设置虚拟环境和缓存目录到 D 盘

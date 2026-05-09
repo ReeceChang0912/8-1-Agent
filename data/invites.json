@@ -1,0 +1,26 @@
+[
+  {
+    "code": "ed683147c2a9",
+    "family_id": "test123",
+    "creator": "张三",
+    "created_at": "2026-05-07T14:33:20.028907",
+    "expires_at": "2026-05-14T14:33:20.028912",
+    "used": false
+  },
+  {
+    "code": "e3d00591f895",
+    "family_id": "test123",
+    "creator": "张三",
+    "created_at": "2026-05-07T14:33:20.035178",
+    "expires_at": "2026-05-14T14:33:20.035179",
+    "used": false
+  },
+  {
+    "code": "12a346768950",
+    "family_id": "test123",
+    "creator": "张三",
+    "created_at": "2026-05-07T14:33:20.041632",
+    "expires_at": "2026-05-14T14:33:20.041633",
+    "used": false
+  }
+]

@@ -62,26 +62,43 @@ class EmotionEngine:
             EmotionType.SADNESS: 0,
             EmotionType.ANXIETY: 0,
             EmotionType.JOY: 0,
-            EmotionType.NEUTRAL: 1
+            EmotionType.NEUTRAL: 0
         }
-        
+
+        has_keyword = False
         for emotion, keywords in self.EMOTION_KEYWORDS.items():
             for keyword in keywords:
                 if keyword in text:
                     emotion_scores[emotion] += 2
-        
+                    has_keyword = True
+
         if "!" in text or "！" in text:
-            emotion_scores[EmotionType.ANGER] += 1
             emotion_scores[EmotionType.JOY] += 1
-        
+
         if "?" in text or "？" in text:
-            emotion_scores[EmotionType.ANXIETY] += 1
-        
-        primary_emotion = max(emotion_scores, key=emotion_scores.get)
+            emotion_scores[EmotionType.ANXIETY] += 0.5
+
+        # No real keywords matched → neutral, reset punctuation-based scores
+        if not has_keyword:
+            emotion_scores[EmotionType.NEUTRAL] = 1
+            emotion_scores[EmotionType.ANXIETY] = 0
+            emotion_scores[EmotionType.JOY] = 0
+
+        # Tie-breaking: prefer NEUTRAL > JOY > first-in-order
+        tie_order = [EmotionType.NEUTRAL, EmotionType.JOY, EmotionType.ANGER,
+                     EmotionType.SADNESS, EmotionType.ANXIETY, EmotionType.FEAR,
+                     EmotionType.SURPRISE]
+        max_score = max(emotion_scores.values())
+        candidates = [e for e, s in emotion_scores.items() if s == max_score]
+        primary_emotion = candidates[0]
+        for e in tie_order:
+            if e in candidates:
+                primary_emotion = e
+                break
+
         total_score = sum(emotion_scores.values())
-        
         confidence = emotion_scores[primary_emotion] / total_score if total_score > 0 else 0.5
-        
+
         return {
             "primary_emotion": primary_emotion,
             "confidence": min(confidence * 2, 1.0),

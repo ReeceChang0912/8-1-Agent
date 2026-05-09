@@ -145,13 +145,9 @@ const PhotosPage: React.FC = () => {
 
               <Form.Item>
                 <Upload
-                  beforeUpload={() => false}
                   showUploadList={false}
-                  onChange={async ({ file }) => {
-                    if (file.status === 'done') {
-                      await handleUpload(file.originFileObj as File)
-                    }
-                  }}
+                  customRequest={({ file }) => handleUpload(file as File)}
+                  accept="image/*"
                 >
                   <Button icon={<UploadOutlined />} type="primary" size="large">
                     选择照片上传
@@ -300,7 +296,7 @@ const PhotosPage: React.FC = () => {
                       cover={
                         <div style={{ height: 200, overflow: 'hidden' }}>
                           <Image
-                            src={`/api/photos/${photo.filename}`}
+                            src={photo.oss_url || `/api/photos/${photo.filename}`}
                             alt={photo.description}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="

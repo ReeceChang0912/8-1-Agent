@@ -3,7 +3,7 @@ import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Divider
 import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, AudioOutlined } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 
 const { TextArea } = Input
 
@@ -63,7 +63,7 @@ const ChatPage: React.FC = () => {
       
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)
-        
+
         if (data.type === 'typing') {
           setIsStreaming(true)
           setStreamingMessage('')
@@ -72,12 +72,17 @@ const ChatPage: React.FC = () => {
           setStreamingMessage(prev => prev + data.data)
         } else if (data.type === 'complete') {
           // 完成,添加到消息列表
+          const fullResponse = data.data.full_response
           const assistantMessage: Message = {
             role: 'assistant',
-            content: data.data.full_response,
+            content: fullResponse,
             timestamp: new Date(),
           }
           setMessages(prev => [...prev, assistantMessage])
+          // 检测日程创建成功
+          if (fullResponse.includes('已添加到日程安排')) {
+            message.success('📅 已添加到日程管理，快去查看吧！')
+          }
           setStreamingMessage('')
           setIsStreaming(false)
           setLoading(false)
@@ -158,12 +163,17 @@ const ChatPage: React.FC = () => {
       // 降级到HTTP模式
       try {
         const response = await chatAPI.sendMessage(messageContent)
+        const respText = response.data.response
         const assistantMessage: Message = {
           role: 'assistant',
-          content: response.data.response,
+          content: respText,
           timestamp: new Date(),
         }
         setMessages(prev => [...prev, assistantMessage])
+        // 检测日程创建成功
+        if (respText.includes('已添加到日程安排')) {
+          message.success('📅 已添加到日程管理，快去查看吧！')
+        }
       } catch (error) {
         message.error('发送消息失败')
       } finally {

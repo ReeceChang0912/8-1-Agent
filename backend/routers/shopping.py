@@ -1,5 +1,5 @@
 """
-购物清单路由
+购物清单路由 - PostgreSQL版
 """
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -15,23 +15,22 @@ class ShoppingItemCreate(BaseModel):
 
 
 def get_agent():
-    from main import get_agent as _get_agent
+    from backend.main import get_agent as _get_agent
     return _get_agent()
 
 
 @router.get("/shopping")
 async def get_shopping_list():
-    """获取购物清单"""
     agent = get_agent()
-    items = agent.shopping_list.get_all()
-    return [{"name": i.name, "quantity": i.quantity, "category": i.category, 
-             "priority": i.priority, "added_by": i.added_by, "status": i.status}
-            for i in items]
+    items = agent.shopping_list.get_items()
+    # 添加 purchased 布尔字段（前端兼容）
+    for item in items:
+        item['purchased'] = item.get('status') == 'purchased'
+    return {"items": items}
 
 
 @router.post("/shopping", status_code=201)
 async def add_shopping_item(item_data: ShoppingItemCreate):
-    """添加购物项"""
     agent = get_agent()
     agent.shopping_list.add_item(
         name=item_data.name,
@@ -42,26 +41,40 @@ async def add_shopping_item(item_data: ShoppingItemCreate):
     return {"success": True, "message": f"已添加: {item_data.name}"}
 
 
-@router.delete("/shopping/{name}")
-async def remove_shopping_item(name: str):
-    """删除购物项"""
+@router.put("/shopping/{item_id}")
+async def update_shopping_item(item_id: int, item_data: ShoppingItemCreate):
     agent = get_agent()
-    agent.shopping_list.remove_item(name)
-    return {"success": True, "message": f"已删除: {name}"}
+    agent.shopping_list.update_item(item_id, **item_data.model_dump())
+    return {"success": True, "message": f"已更新: {item_data.name}"}
 
 
-@router.post("/shopping/stats")
+@router.post("/shopping/{item_id}/toggle")
+async def toggle_shopping_item(item_id: int):
+    agent = get_agent()
+    agent.shopping_list.toggle_purchased(item_id)
+    return {"success": True}
+
+
+@router.delete("/shopping/{item_name}")
+async def remove_shopping_item(item_name: str):
+    agent = get_agent()
+    items = agent.shopping_list.get_items()
+    for item in items:
+        if item.get('name') == item_name:
+            agent.shopping_list.remove_item(item['id'])
+            return {"success": True, "message": f"已删除: {item_name}"}
+    return {"success": False, "message": f"未找到: {item_name}"}
+
+
+@router.get("/shopping/stats")
 async def get_shopping_stats():
-    """获取购物统计"""
     agent = get_agent()
-    stats = agent.shopping_list.get_stats()
+    stats = agent.shopping_list.get_shopping_summary()
     return stats
-
 
 
 @router.get("/suggestions/{member_name}")
 async def get_smart_suggestions(member_name: str):
-    """Get smart shopping suggestions for a member"""
     agent = get_agent()
     suggestions = agent.shopping_list.get_smart_suggestions(member_name)
     return {"suggestions": suggestions}

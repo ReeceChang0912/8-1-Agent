@@ -24,9 +24,11 @@ class PhotoMemory:
     location: str = ""
     mood: str = ""  # happy/sad/neutral/etc.
     metadata: Dict = field(default_factory=dict)
-    
+    oss_url: str = ""  # 阿里云 OSS 访问地址
+
     def to_dict(self) -> Dict:
         return {
+            "id": self.photo_id,
             "photo_id": self.photo_id,
             "filename": self.filename,
             "upload_date": self.upload_date,
@@ -36,9 +38,10 @@ class PhotoMemory:
             "event": self.event,
             "location": self.location,
             "mood": self.mood,
-            "metadata": self.metadata
+            "metadata": self.metadata,
+            "oss_url": self.oss_url
         }
-    
+
     @staticmethod
     def from_dict(data: Dict) -> 'PhotoMemory':
         return PhotoMemory(**data)
@@ -73,11 +76,12 @@ class PhotoMemoryManager:
         people: List[str] = None,
         event: str = "",
         location: str = "",
-        mood: str = ""
+        mood: str = "",
+        oss_url: str = ""
     ) -> str:
         """
         添加照片
-        
+
         Args:
             file_path: 照片文件路径
             description: 描述
@@ -86,24 +90,25 @@ class PhotoMemoryManager:
             event: 相关事件
             location: 拍摄地点
             mood: 情绪氛围
-        
+            oss_url: 阿里云 OSS 访问地址
+
         Returns:
             照片ID
         """
-        
+
         path = Path(file_path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"文件不存在: {file_path}")
-        
+
         # 生成照片ID
         photo_id = f"photo_{hashlib.md5(str(path).encode()).hexdigest()[:12]}"
-        
-        # 复制文件到照片目录
+
+        # 复制文件到照片目录（本地始终保留一份）
         dest_path = self.photo_dir / f"{photo_id}{path.suffix}"
         import shutil
         shutil.copy2(file_path, dest_path)
-        
+
         # 创建照片记录
         photo = PhotoMemory(
             photo_id=photo_id,
@@ -114,12 +119,13 @@ class PhotoMemoryManager:
             people=people or [],
             event=event,
             location=location,
-            mood=mood
+            mood=mood,
+            oss_url=oss_url
         )
-        
+
         self.photos[photo_id] = photo
         self._save_index()
-        
+
         return photo_id
     
     def search_photos(

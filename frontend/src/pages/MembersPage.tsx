@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Table, Button, Form, Input, InputNumber, Select, Modal, message, Popconfirm, Alert } from 'antd'
-import { PlusOutlined, DeleteOutlined, UserAddOutlined, HomeOutlined, CopyOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Form, Input, InputNumber, Select, Modal, message, Popconfirm, Alert, Space } from 'antd'
+import { PlusOutlined, DeleteOutlined, EditOutlined, UserAddOutlined, HomeOutlined, CopyOutlined } from '@ant-design/icons'
 import { membersAPI } from '../services/api'
 import axios from 'axios'
 
@@ -8,8 +8,11 @@ const MembersPage: React.FC = () => {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [editingMember, setEditingMember] = useState<any>(null)
   const [familyInfo, setFamilyInfo] = useState<any>(null)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     loadMembers()
@@ -66,6 +69,25 @@ const MembersPage: React.FC = () => {
     }
   }
 
+  const handleEditClick = (record: any) => {
+    setEditingMember(record)
+    editForm.setFieldsValue(record)
+    setEditModalVisible(true)
+  }
+
+  const handleEditOk = async (values: any) => {
+    if (!editingMember) return
+    try {
+      await axios.put(`/api/members/${editingMember.name}`, values)
+      message.success('成员已更新')
+      setEditModalVisible(false)
+      setEditingMember(null)
+      loadMembers()
+    } catch (error) {
+      message.error('更新失败')
+    }
+  }
+
   const handleDelete = async (name: string) => {
     try {
       await membersAPI.remove(name)
@@ -106,16 +128,21 @@ const MembersPage: React.FC = () => {
       title: '操作',
       key: 'action',
       render: (_: any, record: any) => (
-        <Popconfirm
-          title="确定删除该成员？"
-          onConfirm={() => handleDelete(record.name)}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Button danger icon={<DeleteOutlined />} size="small">
-            删除
+        <Space>
+          <Button icon={<EditOutlined />} size="small" onClick={() => handleEditClick(record)}>
+            编辑
           </Button>
-        </Popconfirm>
+          <Popconfirm
+            title="确定删除该成员？"
+            onConfirm={() => handleDelete(record.name)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button danger icon={<DeleteOutlined />} size="small">
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -227,6 +254,47 @@ const MembersPage: React.FC = () => {
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               添加
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 编辑成员弹窗 */}
+      <Modal
+        title="编辑家庭成员"
+        open={editModalVisible}
+        onCancel={() => { setEditModalVisible(false); setEditingMember(null) }}
+        footer={null}
+      >
+        <Form form={editForm} onFinish={handleEditOk} layout="vertical" initialValues={editingMember}>
+          <Form.Item name="name" label="姓名">
+            <Input disabled />
+          </Form.Item>
+          <Form.Item name="role" label="角色" rules={[{ required: true, message: '请输入角色' }]}>
+            <Input placeholder="例如：父亲、母亲、孩子" />
+          </Form.Item>
+          <Form.Item name="age" label="年龄" rules={[{ required: true, message: '请输入年龄' }]}>
+            <InputNumber min={1} max={150} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="interaction_style" label="交互风格">
+            <Select>
+              <Select.Option value="peer">平等</Select.Option>
+              <Select.Option value="child">对孩子</Select.Option>
+              <Select.Option value="elder">对长辈</Select.Option>
+              <Select.Option value="formal">正式</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="permission" label="权限级别">
+            <Select>
+              <Select.Option value="admin">管理员</Select.Option>
+              <Select.Option value="member">成员</Select.Option>
+              <Select.Option value="guest">访客</Select.Option>
+              <Select.Option value="child">儿童</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block>
+              保存修改
             </Button>
           </Form.Item>
         </Form>

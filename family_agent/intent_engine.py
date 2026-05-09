@@ -23,6 +23,8 @@ class IntentRecognizer:
                 r'记住(.+)',
                 r'别忘了(.+)',
                 r'安排(.+)',
+                r'要去(.+)',
+                r'准备去(.+)',
             ],
             'add_shopping_item': [
                 r'买(.+)',
@@ -143,26 +145,29 @@ class TaskExecutor:
     
     def _handle_create_reminder(self, message: str, intent: Dict) -> str:
         """处理创建提醒"""
-        
-        # 提取时间和事件
-        time_pattern = r'(明天|后天|\d+月\d+日|\d+:\d+)'
-        event_pattern = r'(.+)'
-        
+
+        # 提取时间
+        time_pattern = r'(今天|明天|后天|\d+月\d+日|\d+:\d+|周[一二三四五六日])'
         time_match = re.search(time_pattern, message)
-        event_match = re.search(r'提醒我(.+)|设置提醒(.+)|记住(.+)', message)
-        
-        if event_match:
-            event = event_match.group(1) or event_match.group(2) or event_match.group(3)
-            
-            # 解析时间
-            date_str = self._parse_time(time_match.group(0) if time_match else "明天")
-            
-            # 创建提醒
-            self.agent.add_reminder(date_str, event.strip())
-            
-            return f"✅ 已设置提醒:\n📅 时间: {date_str}\n📝 事件: {event.strip()}\n\n我会准时提醒你!"
-        
-        return "抱歉,我没有理解清楚。请告诉我具体要提醒什么内容和时间?"
+        date_str = self._parse_time(time_match.group(0) if time_match else "明天")
+
+        # 提取事件：去掉时间词和意向词，剩下的就是事件
+        event_clean = message
+        # 去掉匹配到的时间
+        if time_match:
+            event_clean = event_clean.replace(time_match.group(0), '', 1)
+        # 去掉常用语气词
+        for word in ['我要', '我想', '打算', '准备', '要去', '想去', '需要', '安排',
+                     '提醒我', '设置提醒', '记住', '别忘了', '帮我']:
+            event_clean = event_clean.replace(word, '', 1)
+        event_clean = event_clean.strip().strip('，,。.!！?？')
+
+        if event_clean:
+            self.agent.add_reminder(date_str, event_clean)
+
+            return f"✅ 已添加到日程安排:\n📅 时间: {date_str}\n📝 事件: {event_clean}\n\n你可以随时查看和管理日程!"
+
+        return "抱歉,我没有理解清楚。请告诉我具体要做什么事?"
     
     def _handle_add_shopping_item(self, message: str, intent: Dict) -> str:
         """处理添加购物项"""

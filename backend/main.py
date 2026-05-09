@@ -2,22 +2,28 @@
 FastAPI 后端服务 - 模块化路由版
 提供 RESTful API 接口
 """
+import sys
+from pathlib import Path
+_backend_dir = str(Path(__file__).parent)
+_project_root = str(Path(__file__).parent.parent)
+sys.path = [_project_root, _backend_dir] + sys.path
+
+# 设置数据库连接（优先用环境变量，无则用 .env，最后用默认值）
+import os as _os
+_os.environ['DATABASE_URL'] = 'postgresql://postgres:piMmXrF7exas4FBm@47.86.227.185:5432/agent'
+_os.environ['_DEBUG_MAIN_LOADED'] = '1'  # 验证代码确实运行了
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import logging
-from pathlib import Path
 
 from family_agent.core import FamilyAgentCore
 from family_agent.family_auth import FamilyAuthManager
-
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
+from family_agent.database import DatabaseManager
 
 # 导入路由模块
-from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications
+from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +35,26 @@ app = FastAPI(
     description="Family Smart Agent Backend API",
     version="2.0.0 - 模块化路由版"
 )
+
+# 请求日志中间件（用于调试）
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class _ErrorLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        import traceback as _tb
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as exc:
+            tb_str = ''.join(_tb.format_exception(type(exc), exc, exc.__traceback__))
+            logger.error(f"中间件捕获 [{request.method} {request.url.path}]: {tb_str}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=500,
+                content={"detail": f"{type(exc).__name__}: {str(exc)}", "traceback": tb_str}
+            )
+
+app.add_middleware(_ErrorLogMiddleware)
 
 # 配置 CORS
 app.add_middleware(
@@ -42,6 +68,30 @@ app.add_middleware(
 # 初始化 Agent（单例）
 agent = None
 auth_manager = None
+db_manager = None
+
+# 启动时提前初始化数据库和认证
+try:
+    _db_init = DatabaseManager()
+    db_manager = _db_init
+    logger.info("✅ PostgreSQL 数据库连接成功")
+    auth_manager = FamilyAuthManager(db_manager=_db_init, data_dir="data")
+    logger.info("✅ 认证管理器初始化完成")
+except Exception as _e:
+    logger.warning(f"⚠️ 启动初始化失败（请求时将重试）: {_e}")
+
+
+def get_db_manager() -> DatabaseManager:
+    """获取数据库管理器实例"""
+    global db_manager
+    if db_manager is None:
+        try:
+            db_manager = DatabaseManager()
+            logger.info("✅ PostgreSQL 数据库连接成功")
+        except Exception as e:
+            logger.warning(f"⚠️ PostgreSQL 连接失败: {e}")
+            db_manager = None
+    return db_manager
 
 
 def get_agent() -> FamilyAgentCore:
@@ -58,8 +108,8 @@ def get_auth_manager() -> FamilyAuthManager:
     global auth_manager
     if auth_manager is None:
         auth_manager = FamilyAuthManager(
-            families_file="data/families.json",
-            sessions_file="data/sessions.json"
+            db_manager=get_db_manager(),
+            data_dir="data"
         )
         logger.info("✅ 认证管理器初始化完成")
     return auth_manager
@@ -79,6 +129,7 @@ app.include_router(smarthome.router, prefix="/api", tags=["智能家居"])
 app.include_router(tasks.router, prefix="/api", tags=["任务管理"])
 app.include_router(stats.router, prefix="/api", tags=["统计信息"])
 app.include_router(notifications.router, prefix="/api", tags=["推送通知"])
+app.include_router(workbench.router, prefix="/api", tags=["工作台"])
 
 
 # ===== 根路径 =====
@@ -110,4 +161,14 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 用 Config + Server 方式启动，确保环境变量传递正确
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        http="h11",
+        loop="asyncio",
+        log_level="info",
+    )
+    server = uvicorn.Server(config)
+    server.run()

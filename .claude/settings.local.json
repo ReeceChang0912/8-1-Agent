@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_smart_photo.py -v)",
+      "Bash(pip install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(python *)",
+      "Bash(git rm *)",
+      "WebFetch(domain:docs.bt.cn)",
+      "Bash(npx tsc *)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/migrate_and_seed.py)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8000)",
+      "Bash(findstr :3000)",
+      "Bash(PYTHONIOENCODING=utf-8 nohup python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(echo \"Backend PID: $!\")",
+      "Bash(curl *)",
+      "Bash(taskkill //F //IM python.exe //T)",
+      "Bash(taskkill //F //IM uvicorn.exe //T)",
+      "Bash(npm run *)",
+      "Bash(lsof -ti:8000)",
+      "Bash(lsof -ti:3000)",
+      "Read(//proc/**)",
+      "Bash(taskkill /F /PID 15356)",
+      "Bash(taskkill //F //PID 15356)",
+      "Bash(taskkill //F //PID 40524)",
+      "Bash(xxd)",
+      "mcp__plugin_ecc_playwright__browser_navigate",
+      "Bash(taskkill //F //PID 27024)",
+      "Bash(taskkill //F //PID 40384)",
+      "mcp__plugin_claude-mem_mcp-search__smart_outline",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(taskkill //F //IM python3.exe)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(lsof -i:5173)",
+      "Bash(npx vite *)",
+      "Bash(echo \"Frontend PID: $!\")"
+    ]
+  }
+}

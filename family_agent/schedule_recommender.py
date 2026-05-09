@@ -1,5 +1,5 @@
 """
-Smart Schedule Recommender
+Smart Schedule Recommender - PostgreSQL版
 Analyzes historical behavior and recommends schedule
 """
 from typing import List, Dict
@@ -9,24 +9,29 @@ import json
 
 
 class SmartScheduleRecommender:
-    """Recommend schedule based on historical patterns"""
+    """Recommend schedule based on historical patterns - PostgreSQL版"""
 
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, db_manager=None, data_dir: str = "data"):
+        """
+        初始化日程推荐器
+        Args:
+            db_manager: DatabaseManager 实例
+            data_dir: 数据目录（兼容旧接口）
+        """
+        self.db = db_manager
         self.data_dir = Path(data_dir)
-        self.reminders_file = self.data_dir / "reminders.json"
-        self._load_data()
-
-    def _load_data(self):
-        """Load reminders data"""
-        if self.reminders_file.exists():
-            with open(self.reminders_file, 'r', encoding='utf-8') as f:
-                self.reminders = json.load(f)
-        else:
-            self.reminders = []
 
     def analyze_historical_patterns(self, member: str) -> Dict:
         """Analyze historical schedule patterns for a member"""
-        member_reminders = [r for r in self.reminders if r.get('member') == member]
+        if not self.db:
+            return {
+                'preferred_times': {},
+                'preferred_days': {},
+                'common_categories': {},
+                'avg_duration': 0
+            }
+
+        reminders = self.db.get_all_reminders(member=member)
 
         patterns = {
             'preferred_times': {},  # hour -> count
@@ -35,11 +40,14 @@ class SmartScheduleRecommender:
             'avg_duration': 0
         }
 
-        for reminder in member_reminders:
+        for reminder in reminders:
             # Analyze time preferences
             time_str = reminder.get('time', '09:00')
-            hour = int(time_str.split(':')[0])
-            patterns['preferred_times'][hour] = patterns['preferred_times'].get(hour, 0) + 1
+            try:
+                hour = int(time_str.split(':')[0])
+                patterns['preferred_times'][hour] = patterns['preferred_times'].get(hour, 0) + 1
+            except (ValueError, IndexError):
+                pass
 
             # Analyze day preferences
             date_str = reminder.get('date', '')

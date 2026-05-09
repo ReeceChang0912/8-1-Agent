@@ -1,14 +1,19 @@
 """
 成员管理路由
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
+from pathlib import Path
 
 from family_agent.core import FamilyAgentCore
 from family_agent.role_manager import FamilyMember, InteractionStyle, PermissionLevel
+from family_agent.data_migration import DataMigrationManager
+from family_agent.invite_manager import InviteManager
 
 router = APIRouter()
+
 
 class MemberCreate(BaseModel):
     name: str
@@ -21,18 +26,17 @@ class MemberCreate(BaseModel):
 
 
 def get_agent() -> FamilyAgentCore:
-    from main import get_agent as _get_agent
+    from backend.main import get_agent as _get_agent
     return _get_agent()
 
 
 def get_auth_manager():
-    from main import get_auth_manager as _get_auth
+    from backend.main import get_auth_manager as _get_auth
     return _get_auth()
 
 
 @router.get("/members")
 async def get_members():
-    """获取所有成员"""
     agent = get_agent()
     members_list = [
         {
@@ -45,30 +49,30 @@ async def get_members():
         }
         for m in agent.members.values()
     ]
-    return members_list
+    return {"members": members_list}
 
 
 @router.post("/members", status_code=201)
 async def add_member(member_data: MemberCreate, session_id: str = None):
-    """添加成员"""
     agent = get_agent()
     auth = get_auth_manager()
-    
+
     if member_data.name in agent.members:
         raise HTTPException(status_code=400, detail="成员已存在")
-    
-    # 映射字符串到枚举
+
     style_map = {
         "peer": InteractionStyle.PEER,
         "elder": InteractionStyle.ELDER,
-        "junior": InteractionStyle.JUNIOR,
+        "child": InteractionStyle.CHILD,
+        "formal": InteractionStyle.FORMAL,
     }
     perm_map = {
         "admin": PermissionLevel.ADMIN,
         "member": PermissionLevel.MEMBER,
         "guest": PermissionLevel.GUEST,
+        "child": PermissionLevel.CHILD,
     }
-    
+
     member = FamilyMember(
         name=member_data.name,
         role=member_data.role,
@@ -78,80 +82,88 @@ async def add_member(member_data: MemberCreate, session_id: str = None):
         permission=perm_map.get(member_data.permission, PermissionLevel.MEMBER),
         preferences=member_data.preferences or []
     )
-    
+
     agent.add_member(member)
-    
-    # 同步到认证系统
-    if session_id:
+
+    if session_id and auth.db:
         current_user = auth.get_current_user(session_id)
         if current_user:
             session_info = auth.verify_session(session_id)
             if session_info:
-                family_id = session_info['family_id']
-                if family_id in auth.families:
-                    auth.families[family_id].add_member(member_data.name)
-                    auth._save_families()
-    
+                family_id = session_info.get('family_id', '')
+                if family_id:
+                    auth.db.add_family_member(family_id, member_data.name)
+
     return {"success": True, "message": f"成员 {member_data.name} 添加成功"}
 
 
 @router.delete("/members/{name}")
 async def remove_member(name: str):
-    """删除成员"""
     agent = get_agent()
     if name not in agent.members:
         raise HTTPException(status_code=404, detail="成员不存在")
-    
     agent.remove_member(name)
     return {"success": True, "message": f"成员 {name} 已删除"}
 
 
-from fastapi import UploadFile, File
-from family_agent.data_migration import DataMigrationManager
+@router.put("/members/{name}")
+async def update_member(name: str, data: MemberCreate):
+    agent = get_agent()
+    if name not in agent.members:
+        raise HTTPException(status_code=404, detail="成员不存在")
+    agent.update_member(
+        name=name,
+        role=data.role,
+        age=data.age,
+        side=data.side,
+        interaction_style=data.interaction_style,
+        permission=data.permission,
+    )
+    return {"success": True, "message": f"成员 {name} 已更新"}
+
 
 @router.get("/export")
 async def export_data(format: str = 'json'):
-    """Export all data"""
     manager = DataMigrationManager()
     file_path = manager.export_all(format=format)
     return FileResponse(file_path, filename=f"family_data_export.{format}")
 
+
 @router.post("/import")
 async def import_data(file: UploadFile = File(...), format: str = 'json'):
-    """Import data from file"""
     manager = DataMigrationManager()
-    # Save uploaded file
     temp_path = f"data/temp_import.{format}"
     with open(temp_path, 'wb') as f:
         f.write(await file.read())
-    # Import
     success = manager.import_all(temp_path, format=format)
-    # Clean up
     Path(temp_path).unlink(missing_ok=True)
     return {"success": success}
 
-from family_agent.invite_manager import InviteManager
+
+def get_invite_manager() -> InviteManager:
+    from backend.main import get_db_manager
+    return InviteManager(db_manager=get_db_manager())
+
 
 @router.post("/invite/create")
 async def create_invite(family_id: str, creator: str):
-    """Create invite link"""
-    manager = InviteManager()
+    manager = get_invite_manager()
     invite = manager.create_invite(family_id, creator)
     return invite
 
+
 @router.get("/invite/{code}")
 async def validate_invite(code: str):
-    """Validate invite code"""
-    manager = InviteManager()
+    manager = get_invite_manager()
     invite = manager.validate_invite(code)
     if invite:
         return {"valid": True, "invite": invite}
     return {"valid": False}
 
+
 @router.get("/invite/{code}/qrcode")
 async def get_qr_code(code: str):
-    """Get QR code for invite"""
-    manager = InviteManager()
+    manager = get_invite_manager()
     qr_path = manager.generate_qr_code(code)
     if qr_path:
         return FileResponse(qr_path)

@@ -1,11 +1,36 @@
 version: '3.8'
 
 services:
-  family-agent:
-    build: .
-    container_name: family-agent
+  postgres:
+    image: postgres:16-alpine
+    container_name: family-agent-db
+    environment:
+      POSTGRES_DB: agent
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: LFDDWHpyphWxxs7Z
     ports:
-      - "8501:8501"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - family-network
+
+  family-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: family-agent-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       # 持久化数据
       - ./data:/app/data
@@ -15,11 +40,13 @@ services:
       - LLM_PROVIDER=${LLM_PROVIDER:-mock}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - QWEN_API_KEY=${QWEN_API_KEY:-}
+      # 数据库配置（从环境变量读取，不使用硬编码默认值）
+      - DATABASE_URL=${DATABASE_URL}
       # 其他配置
       - TZ=Asia/Shanghai
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -30,3 +57,6 @@ services:
 networks:
   family-network:
     driver: bridge
+
+volumes:
+  postgres_data:

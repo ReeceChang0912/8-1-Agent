@@ -20,17 +20,16 @@ class KnowledgeSearch(BaseModel):
 
 
 def get_agent():
-    from main import get_agent as _get_agent
+    from backend.main import get_agent as _get_agent
     return _get_agent()
 
 
 @router.post("/knowledge/add", status_code=201)
 async def add_knowledge(knowledge_data: KnowledgeAdd):
-    """添加知识"""
     agent = get_agent()
-    doc_id = agent.knowledge_base.add_document(
+    doc_id = agent.knowledge_base.add_text(
+        text=knowledge_data.content,
         title=knowledge_data.title,
-        content=knowledge_data.content,
         category=knowledge_data.category,
         tags=knowledge_data.tags or []
     )
@@ -39,19 +38,13 @@ async def add_knowledge(knowledge_data: KnowledgeAdd):
 
 @router.get("/knowledge/search")
 async def search_knowledge(query: str, category: Optional[str] = None, limit: int = 10):
-    """搜索知识"""
     agent = get_agent()
-    results = agent.knowledge_base.search(
-        query=query,
-        category=category,
-        limit=limit
-    )
+    results = agent.knowledge_base.search(query=query, category=category, n_results=limit)
     return {"results": results, "total": len(results)}
 
 
 @router.get("/knowledge/categories")
 async def get_categories():
-    """获取所有分类"""
     agent = get_agent()
-    categories = agent.knowledge_base.get_categories()
+    categories = [{"key": k, "name": v} for k, v in agent.knowledge_base.CATEGORIES.items()]
     return {"categories": categories}

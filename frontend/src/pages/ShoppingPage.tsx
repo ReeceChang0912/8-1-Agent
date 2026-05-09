@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Table, Button, Form, Input, Select, Tag, Space, message, Statistic, Row, Col } from 'antd'
-import { PlusOutlined, ShoppingCartOutlined, CheckOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Form, Input, InputNumber, Select, Tag, Space, message, Statistic, Row, Col, Modal } from 'antd'
+import { PlusOutlined, ShoppingCartOutlined, CheckOutlined, EditOutlined } from '@ant-design/icons'
 import { shoppingAPI } from '../services/api'
+import axios from 'axios'
 
 const ShoppingPage: React.FC = () => {
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(false)
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [editingItem, setEditingItem] = useState<any>(null)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     loadItems()
@@ -44,6 +48,37 @@ const ShoppingPage: React.FC = () => {
       loadStats()
     } catch (error) {
       message.error('添加失败')
+    }
+  }
+
+  const handleTogglePurchased = async (item: any) => {
+    try {
+      await axios.post(`/api/shopping/${item.id}/toggle`)
+      message.success(item.purchased ? '已标记为待购买' : '已标记为已购买')
+      loadItems()
+      loadStats()
+    } catch (error) {
+      message.error('操作失败')
+    }
+  }
+
+  const handleEditClick = (record: any) => {
+    setEditingItem(record)
+    editForm.setFieldsValue(record)
+    setEditModalVisible(true)
+  }
+
+  const handleEditOk = async (values: any) => {
+    if (!editingItem) return
+    try {
+      await axios.put(`/api/shopping/${editingItem.id}`, values)
+      message.success('已更新')
+      setEditModalVisible(false)
+      setEditingItem(null)
+      loadItems()
+      loadStats()
+    } catch (error) {
+      message.error('更新失败')
     }
   }
 
@@ -93,8 +128,10 @@ const ShoppingPage: React.FC = () => {
       dataIndex: 'purchased',
       key: 'purchased',
       width: 100,
-      render: (p: boolean) => (
-        p ? <Tag icon={<CheckOutlined />} color="success">已购买</Tag> : <Tag color="default">待购买</Tag>
+      render: (p: boolean, record: any) => (
+        <Button type="link" size="small" onClick={() => handleTogglePurchased(record)}>
+          {p ? <Tag icon={<CheckOutlined />} color="success">已购买</Tag> : <Tag color="default">待购买</Tag>}
+        </Button>
       ),
     },
     {
@@ -105,11 +142,16 @@ const ShoppingPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 100,
+      width: 160,
       render: (_: any, record: any) => (
-        <Button danger size="small" onClick={() => handleDelete(record.name)}>
-          删除
-        </Button>
+        <Space>
+          <Button icon={<EditOutlined />} size="small" onClick={() => handleEditClick(record)}>
+            编辑
+          </Button>
+          <Button danger size="small" onClick={() => handleDelete(record.name)}>
+            删除
+          </Button>
+        </Space>
       ),
     },
   ]
@@ -207,6 +249,42 @@ const ShoppingPage: React.FC = () => {
           pagination={{ pageSize: 10 }}
         />
       </Card>
+
+      <Modal
+        title="编辑物品"
+        open={editModalVisible}
+        onCancel={() => { setEditModalVisible(false); setEditingItem(null) }}
+        footer={null}
+      >
+        <Form form={editForm} onFinish={handleEditOk} layout="vertical">
+          <Form.Item name="name" label="物品名称" rules={[{ required: true, message: '请输入名称' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="quantity" label="数量">
+            <Input />
+          </Form.Item>
+          <Form.Item name="category" label="分类">
+            <Select>
+              <Select.Option value="general">一般</Select.Option>
+              <Select.Option value="food">食品</Select.Option>
+              <Select.Option value="daily">日用品</Select.Option>
+              <Select.Option value="electronics">电子产品</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="priority" label="优先级">
+            <Select>
+              <Select.Option value="high">高</Select.Option>
+              <Select.Option value="normal">中</Select.Option>
+              <Select.Option value="low">低</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block>
+              保存修改
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

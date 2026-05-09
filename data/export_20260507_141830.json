@@ -1,0 +1,99 @@
+{
+  "members": {
+    "Ray": {
+      "name": "Ray",
+      "role": "爸爸",
+      "age": 30,
+      "side": "core",
+      "interaction_style": "peer",
+      "permission": "admin",
+      "communication_preferences": {},
+      "wechat_id": "",
+      "voice_print_id": "",
+      "login_account": "",
+      "health_notes": [],
+      "allergies": [],
+      "preferences": [],
+      "taboos": [],
+      "relationships": {}
+    },
+    "李康": {
+      "name": "李康",
+      "role": "父亲",
+      "age": 30,
+      "side": "core",
+      "interaction_style": "peer",
+      "permission": "admin",
+      "communication_preferences": {},
+      "wechat_id": "",
+      "voice_print_id": "",
+      "login_account": "",
+      "health_notes": [],
+      "allergies": [],
+      "preferences": [],
+      "taboos": [],
+      "relationships": {}
+    },
+    "鲨鱼": {
+      "name": "鲨鱼",
+      "role": "父亲",
+      "age": 55,
+      "side": "core",
+      "interaction_style": "elder",
+      "permission": "member",
+      "communication_preferences": {},
+      "wechat_id": "",
+      "voice_print_id": "",
+      "login_account": "",
+      "health_notes": [],
+      "allergies": [],
+      "preferences": [],
+      "taboos": [],
+      "relationships": {}
+    }
+  },
+  "shopping": [
+    {
+      "name": "牛肉",
+      "quantity": "1",
+      "unit": "个",
+      "category": "general",
+      "priority": "normal",
+      "assigned_to": "",
+      "purchased": false,
+      "notes": "",
+      "added_by": "",
+      "added_at": "2026-04-30T17:16:38.568170"
+    }
+  ],
+  "reminders": [],
+  "chat_history": {
+    "我": [
+      {
+        "role": "user",
+        "content": "你好",
+        "emotion": null,
+        "timestamp": "2026-04-30T17:44:43.863569"
+      },
+      {
+        "role": "user",
+        "content": "你好",
+        "emotion": null,
+        "timestamp": "2026-04-30T17:55:53.573281"
+      },
+      {
+        "role": "user",
+        "content": "你好",
+        "emotion": null,
+        "timestamp": "2026-04-30T17:56:09.056761"
+      },
+      {
+        "role": "user",
+        "content": "你好",
+        "emotion": null,
+        "timestamp": "2026-04-30T18:01:02.917789"
+      }
+    ]
+  },
+  "tasks": []
+}

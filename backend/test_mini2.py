@@ -1,0 +1,10 @@
+import http.client, json
+conn = http.client.HTTPConnection("localhost", 8001, timeout=10)
+body = json.dumps({"family_id": "test"})
+conn.request("POST", "/test", body, {"Content-Type": "application/json"})
+resp = conn.getresponse()
+data = resp.read()
+print(f"Status: {resp.status}")
+print(f"Headers: {dict(resp.getheaders())}")
+print(f"Body: {data}")
+conn.close()

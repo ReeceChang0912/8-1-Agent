@@ -30,13 +30,13 @@ const NotificationsPage: React.FC = () => {
     setLoading(true)
     try {
       if (type === 'unread') {
-        const response = await api.get(`/api/notifications/unread/${userId}`)
+        const response = await api.get(`/notifications/unread/${userId}`)
         if (response.data.success) {
           setNotifications(response.data.notifications)
           setUnreadCount(response.data.unread_count)
         }
       } else {
-        const response = await api.get(`/api/notifications/all/${userId}`)
+        const response = await api.get(`/notifications/all/${userId}`)
         if (response.data.success) {
           setNotifications(response.data.notifications)
         }
@@ -54,7 +54,7 @@ const NotificationsPage: React.FC = () => {
     
     // 每30秒刷新一次未读数量
     const interval = setInterval(() => {
-      api.get(`/api/notifications/unread-count/${userId}`).then(res => {
+      api.get(`/notifications/unread-count/${userId}`).then(res => {
         if (res.data.success) {
           setUnreadCount(res.data.unread_count)
         }
@@ -67,7 +67,7 @@ const NotificationsPage: React.FC = () => {
   // 标记为已读
   const handleMarkRead = async (notifId: string) => {
     try {
-      await api.post(`/api/notifications/mark-read/${notifId}`)
+      await api.post(`/notifications/mark-read/${notifId}`)
       msgApi.success('已标记为已读')
       loadNotifications(activeTab)
     } catch (error) {
@@ -78,7 +78,7 @@ const NotificationsPage: React.FC = () => {
   // 标记所有为已读
   const handleMarkAllRead = async () => {
     try {
-      await api.post(`/api/notifications/mark-all-read/${userId}`)
+      await api.post(`/notifications/mark-all-read/${userId}`)
       msgApi.success('全部标记为已读')
       loadNotifications(activeTab)
     } catch (error) {
@@ -89,7 +89,7 @@ const NotificationsPage: React.FC = () => {
   // 删除通知
   const handleDelete = async (notifId: string) => {
     try {
-      await api.delete(`/api/notifications/${notifId}`)
+      await api.delete(`/notifications/${notifId}`)
       msgApi.success('已删除')
       loadNotifications(activeTab)
     } catch (error) {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Layout, Menu, theme, Avatar, Dropdown, Space, message, Badge } from 'antd'
-import { 
-  MessageOutlined, 
-  TeamOutlined, 
+import {
+  MessageOutlined,
+  TeamOutlined,
   CalendarOutlined,
   ShoppingCartOutlined,
   PictureOutlined,
@@ -13,8 +13,11 @@ import {
   ThunderboltOutlined,
   UserOutlined,
   LogoutOutlined,
-  BellOutlined
+  BellOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons'
+import { useNavigate, useLocation } from 'react-router-dom'
+import WorkbenchPage from './pages/WorkbenchPage'
 import ChatPage from './pages/ChatPage'
 import MembersPage from './pages/MembersPage'
 import SchedulePage from './pages/SchedulePage'
@@ -27,13 +30,34 @@ import MCPPage from './pages/MCPPage'
 import StatsPage from './pages/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import LoginPage from './pages/LoginPage'
-import TaskNotification from './components/TaskNotification'
 import axios from 'axios'
 
 const { Header, Sider, Content } = Layout
 
+const PAGE_ROUTES: Record<string, string> = {
+  myWorkbench: '/',
+  chat: '/chat',
+  members: '/members',
+  schedule: '/schedule',
+  shopping: '/shopping',
+  photos: '/photos',
+  knowledge: '/knowledge',
+  skills: '/skills',
+  smarthome: '/smarthome',
+  mcp: '/mcp',
+  stats: '/stats',
+  notifications: '/notifications',
+}
+
+const ROUTE_TO_KEY: Record<string, string> = {}
+for (const [key, path] of Object.entries(PAGE_ROUTES)) {
+  ROUTE_TO_KEY[path] = key
+}
+
 const App: React.FC = () => {
-  const [selectedKey, setSelectedKey] = useState('chat')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const selectedKey = ROUTE_TO_KEY[location.pathname] || 'myWorkbench'
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userInfo, setUserInfo] = useState<any>(null)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -115,6 +139,7 @@ const App: React.FC = () => {
   }
 
   const menuItems = [
+    { key: 'myWorkbench', icon: <AppstoreOutlined />, label: '我的工作台' },
     { key: 'chat', icon: <MessageOutlined />, label: '智能对话' },
     { key: 'members', icon: <TeamOutlined />, label: '家庭成员' },
     { key: 'schedule', icon: <CalendarOutlined />, label: '日程管理' },
@@ -138,6 +163,8 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (selectedKey) {
+      case 'myWorkbench':
+        return <WorkbenchPage />
       case 'chat':
         return <ChatPage />
       case 'members':
@@ -199,7 +226,10 @@ const App: React.FC = () => {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
-          onClick={({ key }) => setSelectedKey(key)}
+          onClick={({ key }) => {
+            const path = PAGE_ROUTES[key] || '/'
+            navigate(path)
+          }}
         />
       </Sider>
       <Layout>
@@ -322,13 +352,6 @@ const App: React.FC = () => {
           </Dropdown>
         </Header>
         <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280, background: colorBgContainer }}>
-          {/* 任务通知 */}
-          {userInfo?.member_name && (
-            <TaskNotification 
-              memberName={userInfo.member_name}
-            />
-          )}
-          
           {renderContent()}
         </Content>
       </Layout>
