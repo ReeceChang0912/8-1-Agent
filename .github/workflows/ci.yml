@@ -84,9 +84,13 @@ jobs:
     
     - name: Debug - Check secrets resolution
       run: |
-        echo "Host length: ${#SERVER_HOST}"
-        echo "User length: ${#SERVER_USER}"
-        echo "Port value: '$PORT'"
+        if [ -z "${SERVER_HOST}" ]; then
+          echo "::error::SERVER_HOST secret is EMPTY - check repo secrets"
+          exit 1
+        fi
+        echo "SERVER_HOST is set (length: ${#SERVER_HOST})"
+        echo "SERVER_USER is set (length: ${#SERVER_USER})"
+        echo "Port: ${PORT}"
       env:
         SERVER_HOST: ${{ secrets.SERVER_HOST }}
         SERVER_USER: ${{ secrets.SERVER_USER }}
