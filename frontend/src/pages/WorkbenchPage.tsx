@@ -126,8 +126,8 @@ const WorkbenchPage: React.FC = () => {
       renderItem={(item, idx) => (
         <List.Item
           style={{ cursor: 'pointer', padding: '10px 0' }}
-          onClick={() => item.url && item.url !== '#' && window.open(item.url, '_blank')}
         >
+          <a href={item.url && item.url !== '#' ? item.url : undefined} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', width: '100%', textDecoration: 'none', color: 'inherit' }}>
           <List.Item.Meta
             avatar={
               <div style={{
@@ -158,6 +158,7 @@ const WorkbenchPage: React.FC = () => {
               </div>
             }
           />
+          </a>
         </List.Item>
       )}
     />
