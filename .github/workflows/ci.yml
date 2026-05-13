@@ -28,9 +28,15 @@ jobs:
         uv pip install --system -r backend/requirements.txt
         uv pip install --system pytest pytest-asyncio pytest-cov
     
+    - name: Debug before tests
+      run: |
+        which python
+        python --version
+        python -m pytest --version
+        ls tests/
     - name: Run tests
       run: |
-        pytest tests/test_auth_merge.py \
+        python -m pytest tests/test_auth_merge.py \
                 tests/test_data_migration.py \
                 tests/test_family_defaults.py \
                 tests/test_paths.py \
