@@ -377,6 +377,9 @@ const WorkbenchPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+      <div style={{ textAlign: 'center', color: '#999', fontSize: 12, marginTop: 16 }}>
+        部署测试 v2.0 — 自动部署管道已就绪 🚀
+      </div>
     </div>
   )
 }
