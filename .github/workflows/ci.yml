@@ -30,13 +30,17 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest tests/ -v --cov=family_agent --cov-report=xml \
-          --ignore=tests/test_database.py \
-          --ignore=tests/test_env_security.py \
-          --ignore=tests/test_invite_manager.py \
-          --ignore=tests/test_websocket.py \
-          --ignore=tests/test_pws.py \
-          -k "not test_member_management and not test_memory_system"
+        pytest tests/test_auth_merge.py \
+                tests/test_data_migration.py \
+                tests/test_family_defaults.py \
+                tests/test_paths.py \
+                tests/test_schedule_recommender.py \
+                tests/test_smart_photo.py \
+                tests/test_smart_shopping.py \
+                tests/test_voice_engine.py \
+                tests/test_agent.py \
+                -v --cov=family_agent --cov-report=xml \
+                -k "not test_member_management and not test_memory_system"
     
     - name: Upload coverage
       uses: codecov/codecov-action@v3
