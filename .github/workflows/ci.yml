@@ -77,7 +77,6 @@ jobs:
   deploy:
     needs: [backend-test, frontend-check]
     runs-on: ubuntu-latest
-    environment: agent-aliyun
     if: github.ref == 'refs/heads/main'
     
     steps:
