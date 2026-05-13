@@ -77,27 +77,14 @@ jobs:
   deploy:
     needs: [backend-test, frontend-check]
     runs-on: ubuntu-latest
+    environment: production
     if: github.ref == 'refs/heads/main'
     
     steps:
     - uses: actions/checkout@v4
     
-    - name: Debug - Check secrets resolution
-      run: |
-        if [ -z "${SERVER_HOST}" ]; then
-          echo "::error::SERVER_HOST secret is EMPTY - check repo secrets"
-          exit 1
-        fi
-        echo "SERVER_HOST is set (length: ${#SERVER_HOST})"
-        echo "SERVER_USER is set (length: ${#SERVER_USER})"
-        echo "Port: ${PORT}"
-      env:
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        PORT: ${{ secrets.SERVER_PORT || '22' }}
-
     - name: Deploy via SSH
-      uses: appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@v1.2.0
       with:
         host: ${{ secrets.SERVER_HOST }}
         username: ${{ secrets.SERVER_USER }}
