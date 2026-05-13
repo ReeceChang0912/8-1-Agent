@@ -351,6 +351,7 @@ class FamilyAgentCore:
             'upload_photo': f"📸 我检测到你想上传照片，请确认是否执行？(是/否)",
             'query_member': f"👤 我检测到你想查询家庭成员信息，请确认是否执行？(是/否)",
             'assign_task': f"✅ 我检测到你想分配任务，请确认是否执行？(是/否)",
+            'add_knowledge': f"📚 我检测到你想把这条信息记到知识库，请确认是否执行？(是/否)",
         }
         return prompts.get(intent, f"我检测到你想执行操作，请确认是否执行？(是/否)")
 

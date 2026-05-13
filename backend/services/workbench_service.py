@@ -18,10 +18,11 @@ CITY_CODE_MAP = {
     '深圳': '101280601', '杭州': '101210101', '成都': '101270101',
     '武汉': '101200101', '西安': '101110101', '南京': '101190101',
     '重庆': '101040100', '天津': '101030100', '苏州': '101190401',
+    '昆明': '101290101',
 }
 
 
-def fetch_weather(city: str = "上海") -> Dict:
+def fetch_weather(city: str = "昆明") -> Dict:
     """获取天气信息（真实数据优先）"""
     result = _fetch_qweather(city)
     if result:
@@ -266,8 +267,9 @@ RSS_FEEDS = {
         'https://feed.appinn.com/',                   # 小众软件
     ],
     'investment': [
-        'https://www.cls.cn/telegraph',               # 财联社（页面，非标准RSS，会走mock）
-        'https://finance.sina.com.cn/rss/gncj.xml',   # 新浪财经
+        'https://finance.sina.com.cn/rss/gncj.xml',   # 新浪财经国内
+        'https://finance.sina.com.cn/rss/gjcj.xml',   # 新浪财经国际
+        'https://feedx.net/rss/36kr.xml',              # 36氪(备)
     ],
 }
 
@@ -470,7 +472,7 @@ def fetch_upcoming_holidays(max_count: int = 5) -> List[Dict]:
 
 # ===== 总体工作台数据 =====
 
-def get_workbench_data(city: str = "上海") -> Dict:
+def get_workbench_data(city: str = "昆明") -> Dict:
     """获取工作台所有数据"""
     from concurrent.futures import ThreadPoolExecutor, as_completed
 

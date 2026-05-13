@@ -65,6 +65,15 @@ class IntentRecognizer:
                 r'让(.+)(.+)',
                 r'叫(.+)(.+)',
             ],
+            'add_knowledge': [
+                r'记一下(.+)',
+                r'记录一下(.+)',
+                r'添加到知识库(.+)',
+                r'保存到知识库(.+)',
+                r'学一下(.+)',
+                r'知识库记(.+)',
+                r'记住这个知识(.+)',
+            ],
         }
     
     def recognize_intent(self, message: str) -> Dict:
@@ -139,7 +148,10 @@ class TaskExecutor:
         
         elif intent == 'assign_task':
             return self._handle_assign_task(message, intent_result)
-        
+
+        elif intent == 'add_knowledge':
+            return self._handle_add_knowledge(message, intent_result)
+
         # 其他意图交给正常对话流程
         return None
     
@@ -306,7 +318,74 @@ class TaskExecutor:
                            f"当 {to_member} 登录时会看到!")
         
         return "抱歉,我没有理解清楚。格式例如:'让妈妈买一袋米'"
-    
+
+    def _classify_category(self, text: str) -> str:
+        """根据文本内容自动分类"""
+        if re.search(r'感冒|发烧|咳嗽|健康|药|病|养生|锻炼|体检|营养|饮食|运动', text):
+            return 'health'
+        if re.search(r'菜|做饭|食谱|烹饪|美食|好吃|食材|厨房', text):
+            return 'cooking'
+        if re.search(r'钱|理财|投资|省|花|预算|存款|股票|保险|账单', text):
+            return 'finance'
+        if re.search(r'旅游|旅行|去|玩|景点|酒店|机票|出发', text):
+            return 'travel'
+        if re.search(r'法|律师|合同|权益|条款|规定|政策', text):
+            return 'legal'
+        if re.search(r'教育|学习|学校|考试|老师|课程|孩子|儿童', text):
+            return 'education'
+        if re.search(r'老婆|老公|家人|家庭|关系|沟通|相处|父母|孩子|感情', text):
+            return 'relationship'
+        return 'general'
+
+    def _handle_add_knowledge(self, message: str, intent: Dict) -> str:
+        """处理添加到知识库"""
+        # 提取要保存的内容
+        patterns = [
+            r'记一下(.+)',
+            r'记录一下(.+)',
+            r'添加到知识库(.+)',
+            r'保存到知识库(.+)',
+            r'学一下(.+)',
+            r'知识库记(.+)',
+            r'记住这个知识(.+)',
+        ]
+
+        content = None
+        for pattern in patterns:
+            match = re.search(pattern, message)
+            if match:
+                content = match.group(1).strip()
+                break
+
+        if not content:
+            return "请告诉我需要记住什么内容，例如：\"记一下感冒要多喝热水\""
+
+        # 自动分类
+        category = self._classify_category(content)
+
+        # 生成标题（取前20个字）
+        title = content[:20] + ('...' if len(content) > 20 else '')
+
+        # 保存到知识库
+        self.agent.knowledge_base.add_text(
+            text=content,
+            title=title,
+            category=category,
+            tags=[category]
+        )
+
+        category_names = {
+            'health': '健康医疗', 'cooking': '美食烹饪', 'finance': '家庭财务',
+            'travel': '旅游出行', 'legal': '法律法规', 'education': '教育学习',
+            'relationship': '家庭关系', 'general': '综合知识',
+        }
+        cat_name = category_names.get(category, '综合知识')
+
+        return (f"📚 已保存到知识库!\n"
+                f"📝 内容: {content}\n"
+                f"🏷️ 分类: {cat_name}\n\n"
+                f"你可以在知识库页面查看和管理所有知识!")
+
     def _parse_time(self, time_str: str) -> str:
         """解析时间字符串"""
         

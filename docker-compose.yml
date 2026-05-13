@@ -1,8 +1,8 @@
 services:
   family-agent:
     build:
-      context: /www/wwwroot/family-agent
-      dockerfile: /www/wwwroot/family-agent/Dockerfile
+      context: .
+      dockerfile: ./Dockerfile
     container_name: family-agent-api
     ports:
       - "8000:8000"

@@ -59,6 +59,8 @@ const WorkbenchPage: React.FC = () => {
 
   useEffect(() => {
     fetchAll()
+    const timer = setInterval(fetchAll, 60000)
+    return () => clearInterval(timer)
   }, [])
 
   const fetchAll = async () => {
@@ -66,7 +68,7 @@ const WorkbenchPage: React.FC = () => {
     setError(null)
     try {
       const [weatherRes, aiRes, internetRes, investRes, briefingRes, holidayRes] = await Promise.allSettled([
-        axios.get('/api/workbench/weather', { params: { city: '上海' } }),
+        axios.get('/api/workbench/weather', { params: { city: '昆明' } }),
         axios.get('/api/workbench/news', { params: { category: 'ai', limit: 6 } }),
         axios.get('/api/workbench/news', { params: { category: 'internet', limit: 6 } }),
         axios.get('/api/workbench/news', { params: { category: 'investment', limit: 5 } }),
@@ -227,7 +229,7 @@ const WorkbenchPage: React.FC = () => {
             title={
               <Space>
                 <EnvironmentOutlined style={{ color: '#667eea' }} />
-                <span>天气 · 上海</span>
+                <span>天气 · 昆明</span>
               </Space>
             }
             style={{ borderRadius: 12, height: '100%' }}

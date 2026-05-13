@@ -5,7 +5,10 @@ LLM适配器 - 支持多种大语言模型
 
 from typing import Optional, Dict, List
 import os
+import logging
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # 加载环境变量
 load_dotenv()
@@ -56,15 +59,15 @@ class LLMAdapter:
             
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
-                print("⚠️ 未设置OPENAI_API_KEY，使用Mock模式")
+                logger.info("⚠️ 未设置OPENAI_API_KEY，使用Mock模式")
                 self.provider = "mock"
                 return
             
             self.client = OpenAI(api_key=api_key)
-            print("✅ OpenAI客户端初始化成功")
+            logger.info("✅ OpenAI客户端初始化成功")
             
-        except ImportError:
-            print("⚠️ 未安装openai库，使用Mock模式")
+        except Exception:
+            logger.info("⚠️ 未安装openai库，使用Mock模式")
             self.provider = "mock"
     
     def _init_qwen(self):
@@ -74,17 +77,17 @@ class LLMAdapter:
             
             api_key = os.getenv("QWEN_API_KEY")
             if not api_key:
-                print("⚠️ 未设置QWEN_API_KEY，使用Mock模式")
+                logger.info("⚠️ 未设置QWEN_API_KEY，使用Mock模式")
                 self.provider = "mock"
                 return
             
             import dashscope
             dashscope.api_key = api_key
             self.client = Generation
-            print("✅ 通义千问客户端初始化成功")
+            logger.info("✅ 通义千问客户端初始化成功")
             
-        except ImportError:
-            print("⚠️ 未安装dashscope库，使用Mock模式")
+        except Exception:
+            logger.info("⚠️ 未安装dashscope库，使用Mock模式")
             self.provider = "mock"
     
     def _init_deepseek(self):
@@ -94,7 +97,7 @@ class LLMAdapter:
             
             api_key = os.getenv("DEEPSEEK_API_KEY")
             if not api_key:
-                print("⚠️ 未设置DEEPSEEK_API_KEY，使用Mock模式")
+                logger.info("⚠️ 未设置DEEPSEEK_API_KEY，使用Mock模式")
                 self.provider = "mock"
                 return
             
@@ -105,10 +108,10 @@ class LLMAdapter:
                 base_url=api_base
             )
             self.model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-            print(f"✅ DeepSeek客户端初始化成功 (模型: {self.model})")
+            logger.info(f"✅ DeepSeek客户端初始化成功 (模型: {self.model})")
             
-        except ImportError:
-            print("⚠️ 未安装openai库，使用Mock模式")
+        except Exception:
+            logger.info("⚠️ 未安装openai库，使用Mock模式")
             self.provider = "mock"
     
     def _init_ollama(self):
@@ -123,13 +126,13 @@ class LLMAdapter:
             # 测试连接
             response = requests.get(f"{ollama_url}/api/tags")
             if response.status_code == 200:
-                print(f"✅ Ollama客户端初始化成功 (模型: {self.model})")
+                logger.info(f"✅ Ollama客户端初始化成功 (模型: {self.model})")
             else:
-                print("⚠️ Ollama服务未运行，使用Mock模式")
+                logger.info("⚠️ Ollama服务未运行，使用Mock模式")
                 self.provider = "mock"
                 
         except Exception as e:
-            print(f"⚠️ Ollama连接失败: {e}，使用Mock模式")
+            logger.info(f"⚠️ Ollama连接失败: {e}，使用Mock模式")
             self.provider = "mock"
     
     def chat(self, messages: List[Dict], temperature: float = 0.7) -> str:
@@ -168,7 +171,7 @@ class LLMAdapter:
             return response.choices[0].message.content
             
         except Exception as e:
-            print(f"OpenAI调用失败: {e}")
+            logger.info(f"OpenAI调用失败: {e}")
             return self._chat_mock(messages)
     
     def _chat_qwen(self, messages: List[Dict], temperature: float) -> str:
@@ -191,11 +194,11 @@ class LLMAdapter:
             if response.status_code == 200:
                 return response.output.text
             else:
-                print(f"Qwen调用失败: {response.message}")
+                logger.info(f"Qwen调用失败: {response.message}")
                 return self._chat_mock(messages)
                 
         except Exception as e:
-            print(f"Qwen调用失败: {e}")
+            logger.info(f"Qwen调用失败: {e}")
             return self._chat_mock(messages)
     
     def _chat_deepseek(self, messages: List[Dict], temperature: float) -> str:
@@ -211,7 +214,7 @@ class LLMAdapter:
             return response.choices[0].message.content
             
         except Exception as e:
-            print(f"DeepSeek调用失败: {e}")
+            logger.info(f"DeepSeek调用失败: {e}")
             return self._chat_mock(messages)
     
     def _chat_ollama(self, messages: List[Dict], temperature: float) -> str:
@@ -245,11 +248,11 @@ class LLMAdapter:
                 result = response.json()
                 return result['message']['content']
             else:
-                print(f"Ollama调用失败: {response.text}")
+                logger.info(f"Ollama调用失败: {response.text}")
                 return self._chat_mock(messages)
                 
         except Exception as e:
-            print(f"Ollama调用失败: {e}")
+            logger.info(f"Ollama调用失败: {e}")
             return self._chat_mock(messages)
     
     def _chat_mock(self, messages: List[Dict]) -> str:
@@ -316,7 +319,7 @@ class LLMAdapter:
             return self._analyze_image_mock(image_path, prompt)
 
         except Exception as e:
-            print(f"Image analysis failed: {e}")
+            logger.info(f"Image analysis failed: {e}")
             return {"description": "", "tags": [], "people": [], "event": "", "location": "", "mood": "neutral"}
 
     def _analyze_image_mock(self, image_path: str, prompt: str) -> dict:
