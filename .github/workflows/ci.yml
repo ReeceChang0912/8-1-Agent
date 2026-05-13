@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.13'
     
@@ -39,23 +39,22 @@ jobs:
                 tests/test_smart_shopping.py \
                 tests/test_voice_engine.py \
                 tests/test_agent.py \
-                -v --cov=family_agent --cov-report=xml \
+                -v \
                 -k "not test_member_management and not test_memory_system"
     
     - name: Upload coverage
+      if: false
       uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
 
   # 前端检查
   frontend-check:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
     
@@ -81,7 +80,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Package files
       run: |
