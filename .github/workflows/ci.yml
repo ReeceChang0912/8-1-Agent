@@ -82,26 +82,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Package files
-      run: |
-        echo "=== workspace ==="
-        pwd
-        echo "=== creating tar ==="
-        tar -czf /tmp/deploy.tar.gz --exclude-vcs .
-        echo "=== tar created ==="
-        cp /tmp/deploy.tar.gz deploy.tar.gz
-        ls -lh deploy.tar.gz
-    - name: Upload package to server
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        password: ${{ secrets.SERVER_PASSWORD }}
-        port: ${{ secrets.SERVER_PORT || '22' }}
-        source: "deploy.tar.gz"
-        target: "/www/wwwroot/family-agent"
-        strip_components: 0
-
     - name: Deploy via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -111,7 +91,9 @@ jobs:
         port: ${{ secrets.SERVER_PORT || '22' }}
         script: |
           cd /www/wwwroot/family-agent
-          tar xzf deploy.tar.gz
+          curl -sL -o deploy.tar.gz \
+            "https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz"
+          tar xzf deploy.tar.gz --strip-components=1
           rm -f deploy.tar.gz
           docker-compose down
           docker-compose up --build -d
