@@ -200,6 +200,30 @@ class KnowledgeBase:
         
         return docs[:limit]
     
+    def get_document_detail(self, doc_id: str) -> Dict:
+        """获取文档详情"""
+        if doc_id not in self.metadata_index:
+            return {}
+        
+        doc_metadata = self.metadata_index[doc_id].copy()
+        
+        # 从 ChromaDB 中获取文档内容
+        try:
+            results = self.collection.get(
+                ids=[doc_id],
+                include=['documents']
+            )
+            
+            if results['documents'] and len(results['documents']) > 0:
+                doc_metadata['content'] = results['documents'][0]
+            else:
+                doc_metadata['content'] = ''
+        except Exception as e:
+            print(f"获取文档内容失败: {e}")
+            doc_metadata['content'] = ''
+        
+        return doc_metadata
+    
     def get_statistics(self) -> Dict:
         """获取统计信息"""
         stats = {

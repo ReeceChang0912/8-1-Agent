@@ -88,11 +88,14 @@ class FamilyAuthManager:
         result = self.db.add_family(family_id, family_name, [admin_name])
         
         if result:
+            # 初始化默认数据
+            self.db.initialize_family_defaults(family_id, admin_name)
+            
             return {
                 "family_id": family_id,
                 "family_name": family_name,
                 "admin": admin_name,
-                "message": f"✅ 家庭创建成功!\n家庭号: {family_id}\n请分享给家人加入"
+                "message": f"✅ 家庭创建成功!\n家庭号: {family_id}\n已为您初始化默认数据（家庭成员、购物清单、日程安排）\n请分享给家人加入"
             }
         return {"success": False, "message": "创建家庭失败"}
     

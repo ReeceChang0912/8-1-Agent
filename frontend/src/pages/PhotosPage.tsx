@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Upload, Button, Input, Form, message, Row, Col, Image, Empty, Tabs, Badge, Statistic, Progress } from 'antd'
-import { UploadOutlined, PictureOutlined, SearchOutlined, RobotOutlined, FolderOutlined } from '@ant-design/icons'
+import { Card, Upload, Button, Input, Form, message, Row, Col, Image, Empty, Tabs, Badge, Statistic, Progress, Space, Tooltip, Spin } from 'antd'
+import { UploadOutlined, PictureOutlined, LoadingOutlined, RobotOutlined, FolderOutlined } from '@ant-design/icons'
 import { photosAPI } from '../services/api'
 import axios from 'axios'
+import '../styles/PhotosPage.css'
 
 const { TextArea } = Input
 const { TabPane } = Tabs
@@ -15,11 +16,13 @@ interface Photo {
   tags: string[]
   people: string[]
   location: string
+  oss_url?: string
 }
 
 const PhotosPage: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [form] = Form.useForm()
   const [analyzing, setAnalyzing] = useState(false)
@@ -36,7 +39,7 @@ const PhotosPage: React.FC = () => {
     setLoading(true)
     try {
       const res = await photosAPI.getAll(query)
-      setPhotos(res.data.photos)
+      setPhotos(res.data.photos || [])
     } catch (error) {
       message.error('加载照片失败')
     } finally {
@@ -51,7 +54,7 @@ const PhotosPage: React.FC = () => {
       const res = await axios.post('/api/photos/analyze', null, {
         params: { batch_size: 20 }
       })
-      
+
       if (res.data.success > 0) {
         message.success(`✅ 成功分析 ${res.data.success} 张照片`)
         loadPhotos()
@@ -90,7 +93,7 @@ const PhotosPage: React.FC = () => {
   const handleUpload = async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
-    
+
     const values = form.getFieldsValue()
     formData.append('description', values.description || '')
     formData.append('tags', values.tags || '')
@@ -98,24 +101,137 @@ const PhotosPage: React.FC = () => {
     formData.append('location', values.location || '')
 
     try {
-      const res = await photosAPI.upload(formData)
+      await photosAPI.upload(formData)
       message.success('照片上传成功')
       form.resetFields()
       loadPhotos()
     } catch (error) {
       message.error('上传失败')
     }
-    
+
     return false
   }
 
-  const handleSearch = () => {
-    loadPhotos(searchQuery)
+  const handleSearch = (query?: string) => {
+    loadPhotos(query || searchQuery)
   }
 
   return (
-    <div>
-      <Tabs defaultActiveKey="upload">
+    <div className="photos-page-container">
+      <Tabs defaultActiveKey="browse" className="photos-tabs">
+        <TabPane
+          tab={
+            <span>
+              <PictureOutlined />
+              照片墙
+            </span>
+          }
+          key="browse"
+        >
+          {/* 顶部操作栏 */}
+          <div className="photos-header">
+            <div className="photos-title">
+              <PictureOutlined style={{ marginRight: 10 }} />
+              照片墙
+            </div>
+            <Space className="photos-actions">
+              <Input.Search
+                placeholder="搜索照片..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onSearch={handleSearch}
+                className="photos-search"
+                allowClear
+              />
+              <Upload
+                showUploadList={false}
+                action="/api/photos/upload"
+                multiple
+                accept="image/*"
+                beforeUpload={() => { setUploading(true); return true }}
+                onChange={({ file }) => {
+                  if (file.status === 'done' || file.status === 'error') {
+                    setUploading(false)
+                  }
+                  if (file.status === 'done') {
+                    if (file.response?.success) {
+                      message.success(`已上传 ${file.name}`)
+                      loadPhotos()
+                    }
+                  }
+                  if (file.status === 'error') {
+                    message.error(`${file.name} 上传失败`)
+                  }
+                }}
+              >
+                <Tooltip title="支持多选">
+                  <Button type="primary" icon={uploading ? <LoadingOutlined /> : <UploadOutlined />} size="large" loading={uploading} className="photos-upload-btn">
+                    上传照片
+                  </Button>
+                </Tooltip>
+              </Upload>
+            </Space>
+          </div>
+
+          {/* 照片墙 */}
+          <Spin spinning={loading}>
+          {photos.length === 0 ? (
+            <div className="photos-empty">
+              <Empty description="暂无照片，点击右上角上传">
+                <Upload
+                  showUploadList={false}
+                  action="/api/photos/upload"
+                  accept="image/*"
+                  beforeUpload={() => { setUploading(true); return true }}
+                  onChange={({ file }) => {
+                    if (file.status === 'done' || file.status === 'error') {
+                      setUploading(false)
+                    }
+                    if (file.status === 'done' && file.response?.success) {
+                      message.success('照片上传成功')
+                      loadPhotos()
+                    }
+                  }}
+                >
+                  <Button type="primary" icon={<UploadOutlined />}>
+                    上传第一张照片
+                  </Button>
+                </Upload>
+              </Empty>
+            </div>
+          ) : (
+            <Row gutter={[16, 16]} className="photos-grid">
+              {photos.map((photo) => (
+                <Col xs={24} sm={12} md={8} lg={6} xl={6} key={photo.id}>
+                  <div
+                    className="photo-item"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.classList.add('photo-hover')
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.classList.remove('photo-hover')
+                    }}
+                  >
+                    <Image
+                      src={photo.oss_url || `/api/photos/${photo.filename}`}
+                      alt={photo.description}
+                      className="photo-image"
+                      fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                      preview={{ mask: (photo.description || photo.location) ? (
+                        <div className="photo-mask">
+                          {photo.description && <div className="photo-mask-desc">{photo.description}</div>}
+                          {photo.location && <div className="photo-mask-loc">📍 {photo.location}</div>}
+                        </div>
+                      ) : true }}
+                    />
+                  </div>
+                </Col>
+              ))}
+            </Row>
+          )}
+          </Spin>
+        </TabPane>
+
         <TabPane
           tab={
             <span>
@@ -164,14 +280,14 @@ const PhotosPage: React.FC = () => {
               <RobotOutlined />
               智能分析
               {analysisStats?.unannotated_photos > 0 && (
-                <Badge count={analysisStats.unannotated_photos} style={{ marginLeft: 8 }} />
+                <Badge count={analysisStats.unannotated_photos} className="analyze-badge" />
               )}
             </span>
           }
           key="analyze"
         >
-          <Row gutter={16}>
-            <Col span={8}>
+          <Row gutter={16} className="stats-row">
+            <Col xs={24} sm={8} className="stats-col">
               <Card>
                 <Statistic
                   title="总照片数"
@@ -180,7 +296,7 @@ const PhotosPage: React.FC = () => {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8} className="stats-col">
               <Card>
                 <Statistic
                   title="已标注"
@@ -189,7 +305,7 @@ const PhotosPage: React.FC = () => {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col xs={24} sm={8} className="stats-col">
               <Card>
                 <Statistic
                   title="待标注"
@@ -200,8 +316,8 @@ const PhotosPage: React.FC = () => {
             </Col>
           </Row>
 
-          <Card style={{ marginTop: 16 }}>
-            <div style={{ marginBottom: 16 }}>
+          <Card className="analyze-card">
+            <div className="progress-wrapper">
               <Progress
                 percent={analysisStats?.annotation_rate || 0}
                 format={(percent) => `${percent}% 已标注`}
@@ -215,11 +331,12 @@ const PhotosPage: React.FC = () => {
               loading={analyzing}
               block
               size="large"
+              className="analyze-btn"
             >
               {analyzing ? '正在智能分析...' : '🤖 开始智能分析'}
             </Button>
 
-            <div style={{ marginTop: 16, color: '#666', fontSize: 14 }}>
+            <div className="analyze-tips">
               <p>✨ 智能分析功能可以：</p>
               <ul>
                 <li>自动生成照片描述</li>
@@ -241,9 +358,9 @@ const PhotosPage: React.FC = () => {
           key="albums"
         >
           {albums.length > 0 ? (
-            <Row gutter={16}>
+            <Row gutter={16} className="albums-row">
               {albums.map((album, index) => (
-                <Col span={8} key={index}>
+                <Col xs={24} sm={12} md={8} key={index} className="album-col">
                   <Card
                     hoverable
                     cover={
@@ -263,71 +380,6 @@ const PhotosPage: React.FC = () => {
           ) : (
             <Empty description="暂无自动相册，请先上传更多照片" />
           )}
-        </TabPane>
-
-        <TabPane
-          tab={
-            <span>
-              <PictureOutlined />
-              照片浏览
-            </span>
-          }
-          key="browse"
-        >
-          <Card
-            title="照片库"
-            extra={
-              <Input.Search
-                placeholder="搜索照片..."
-                onSearch={handleSearch}
-                style={{ width: 250 }}
-                prefix={<SearchOutlined />}
-              />
-            }
-          >
-            {photos.length === 0 ? (
-              <Empty description="暂无照片" />
-            ) : (
-              <Row gutter={[16, 16]}>
-                {photos.map((photo) => (
-                  <Col xs={24} sm={12} md={8} lg={6} key={photo.id}>
-                    <Card
-                      hoverable
-                      cover={
-                        <div style={{ height: 200, overflow: 'hidden' }}>
-                          <Image
-                            src={photo.oss_url || `/api/photos/${photo.filename}`}
-                            alt={photo.description}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-                          />
-                        </div>
-                      }
-                    >
-                      <Card.Meta
-                        title={photo.description || '未命名照片'}
-                        description={
-                          <div style={{ fontSize: 12 }}>
-                            {photo.people && photo.people.length > 0 && (
-                              <div>👥 {photo.people.join(', ')}</div>
-                            )}
-                            {photo.location && <div>📍 {photo.location}</div>}
-                            {photo.tags && photo.tags.length > 0 && (
-                              <div style={{ marginTop: 4 }}>
-                                {photo.tags.map(tag => (
-                                  <span key={tag} style={{ marginRight: 4 }}>#{tag}</span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        }
-                      />
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </Card>
         </TabPane>
       </Tabs>
     </div>

@@ -126,3 +126,8 @@ temp/
 *.tmp
 *.bak
 *.backup
+
+# Archive directories (historical/temporary files)
+backend/tests_archive/
+backend/scripts_archive/
+docs/archive/

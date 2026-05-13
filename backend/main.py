@@ -10,7 +10,7 @@ sys.path = [_project_root, _backend_dir] + sys.path
 
 # 设置数据库连接（优先用环境变量，无则用 .env，最后用默认值）
 import os as _os
-_os.environ['DATABASE_URL'] = 'postgresql://postgres:piMmXrF7exas4FBm@47.86.227.185:5432/agent'
+_os.environ['DATABASE_URL'] = 'postgresql://postgres.trhxvrcutwusuxodeppt:NIMAluobin123++@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres'
 _os.environ['_DEBUG_MAIN_LOADED'] = '1'  # 验证代码确实运行了
 
 from fastapi import FastAPI
@@ -23,7 +23,7 @@ from family_agent.family_auth import FamilyAuthManager
 from family_agent.database import DatabaseManager
 
 # 导入路由模块
-from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench
+from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench, finance
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -123,18 +123,19 @@ app.include_router(members.router, prefix="/api", tags=["成员管理"])
 app.include_router(shopping.router, prefix="/api", tags=["购物清单"])
 app.include_router(schedule.router, prefix="/api", tags=["日程管理"])
 app.include_router(photos.router, prefix="/api", tags=["照片管理"])
-app.include_router(knowledge.router, prefix="/api", tags=["知识库"])
+app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(skills.router, prefix="/api", tags=["技能中心"])
 app.include_router(smarthome.router, prefix="/api", tags=["智能家居"])
 app.include_router(tasks.router, prefix="/api", tags=["任务管理"])
 app.include_router(stats.router, prefix="/api", tags=["统计信息"])
 app.include_router(notifications.router, prefix="/api", tags=["推送通知"])
 app.include_router(workbench.router, prefix="/api", tags=["工作台"])
+app.include_router(finance.router, prefix="/api", tags=["家庭财务"])
 
 
 # ===== 根路径 =====
 
-@app.get("/")
+@app.get("/api")
 def root():
     """API 根路径"""
     return {
@@ -157,6 +158,29 @@ if photos_path.exists():
     logger.info("✅ 照片静态文件服务已挂载: /api/photos")
 else:
     logger.warning("️ 照片目录不存在，跳过静态文件挂载")
+
+# 挂载前端构建产物（生产环境）
+frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+
+    # Vite 构建的静态资源（带 hash，可直接缓存）
+    assets_path = frontend_dist / "assets"
+    if assets_path.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="frontend_assets")
+
+    # SPA 回退路由：所有非 API 路径返回 index.html（放在最后注册）
+    from fastapi.responses import FileResponse, JSONResponse
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        # 排除 API 路径
+        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        return FileResponse(str(frontend_dist / "index.html"))
+
+    logger.info("✅ 前端静态文件已挂载")
+else:
+    logger.warning("⚠️ 前端构建产物不存在（frontend/dist），请运行: cd frontend && npm run build")
 
 
 if __name__ == "__main__":

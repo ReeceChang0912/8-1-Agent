@@ -44,7 +44,13 @@ class PhotoMemory:
 
     @staticmethod
     def from_dict(data: Dict) -> 'PhotoMemory':
-        return PhotoMemory(**data)
+        clean = {k: v for k, v in data.items() if k in {
+            'photo_id', 'filename', 'upload_date', 'description',
+            'tags', 'people', 'event', 'location', 'mood', 'metadata', 'oss_url'
+        }}
+        if 'photo_id' not in clean and 'id' in data:
+            clean['photo_id'] = data['id']
+        return PhotoMemory(**clean)
 
 
 class PhotoMemoryManager:

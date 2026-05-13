@@ -4,7 +4,7 @@ import { ApiOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import { mcpAPI } from '../services/api'
 
 const MCPPage: React.FC = () => {
-  const [tools, setTools] = useState([])
+  const [tools, setTools] = useState<any[]>([])
   const [selectedTool, setSelectedTool] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)

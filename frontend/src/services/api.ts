@@ -34,7 +34,7 @@ export const shoppingAPI = {
   getAll: () => api.get('/shopping'),
   add: (data: any) => api.post('/shopping', data),
   remove: (name: string) => api.delete(`/shopping/${name}`),
-  getStats: () => api.post('/shopping/stats'),
+  getStats: () => api.get('/shopping/stats'),
 }
 
 // 照片记忆
@@ -61,6 +61,35 @@ export const mcpAPI = {
 // 统计信息
 export const statsAPI = {
   getStats: () => api.get('/stats'),
+}
+
+// 知识库
+export const knowledgeAPI = {
+  search: (query: string, category?: string, limit?: number) => 
+    api.get('/knowledge/search', { params: { query, category, limit } }),
+  add: (data: { title: string; content: string; category?: string; tags?: string[] }) => 
+    api.post('/knowledge/add', data),
+  list: (category?: string, limit?: number) => 
+    api.get('/knowledge/list', { params: { category, limit } }),
+  categories: () => api.get('/knowledge/categories'),
+  getDetail: (docId: string) => 
+    api.get(`/knowledge/detail/${docId}`),
+}
+
+// 家庭财务
+export const financeAPI = {
+  getSummary: (year: number, month: number) =>
+    api.get('/finance/summary', { params: { year, month } }),
+  getTransactions: (params: {
+    year: number; month: number;
+    transaction_type?: string; category?: string;
+    page?: number; page_size?: number;
+  }) => api.get('/finance/transactions', { params }),
+  add: (data: any) => api.post('/finance/transactions', data),
+  update: (id: number, data: any) => api.put(`/finance/transactions/${id}`, data),
+  remove: (id: number) => api.delete(`/finance/transactions/${id}`),
+  getCategories: () => api.get('/finance/categories'),
+  getTrend: (months: number = 6) => api.get('/finance/trend', { params: { months } }),
 }
 
 export default api

@@ -24,7 +24,7 @@ def get_agent():
     return _get_agent()
 
 
-@router.post("/knowledge/add", status_code=201)
+@router.post("/add", status_code=201)
 async def add_knowledge(knowledge_data: KnowledgeAdd):
     agent = get_agent()
     doc_id = agent.knowledge_base.add_text(
@@ -36,15 +36,33 @@ async def add_knowledge(knowledge_data: KnowledgeAdd):
     return {"success": True, "doc_id": doc_id, "message": "知识已添加"}
 
 
-@router.get("/knowledge/search")
+@router.get("/search")
 async def search_knowledge(query: str, category: Optional[str] = None, limit: int = 10):
     agent = get_agent()
     results = agent.knowledge_base.search(query=query, category=category, n_results=limit)
     return {"results": results, "total": len(results)}
 
 
-@router.get("/knowledge/categories")
+@router.get("/categories")
 async def get_categories():
     agent = get_agent()
     categories = [{"key": k, "name": v} for k, v in agent.knowledge_base.CATEGORIES.items()]
     return {"categories": categories}
+
+
+@router.get("/list")
+async def list_knowledge(category: Optional[str] = None, limit: int = 50):
+    """列出知识库中的所有文档"""
+    agent = get_agent()
+    documents = agent.knowledge_base.list_documents(category=category, limit=limit)
+    return {"documents": documents, "total": len(documents)}
+
+
+@router.get("/detail/{doc_id}")
+async def get_document_detail(doc_id: str):
+    """获取单个文档详情"""
+    agent = get_agent()
+    document = agent.knowledge_base.get_document_detail(doc_id=doc_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    return {"document": document}

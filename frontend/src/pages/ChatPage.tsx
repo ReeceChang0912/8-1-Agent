@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Divider } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, AudioOutlined } from '@ant-design/icons'
+import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag } from 'antd'
+import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import rehypeHighlight from 'rehype-highlight'
 
 const { TextArea } = Input
 
@@ -11,6 +15,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  images?: { url: string; name: string }[]
 }
 
 const ChatPage: React.FC = () => {
@@ -21,14 +26,31 @@ const ChatPage: React.FC = () => {
   const [streamingMessage, setStreamingMessage] = useState('') // 流式消息
   
   // Voice recognition
-  const { isListening, transcript, startListening, stopListening, error: speechError } = useSpeechRecognition();
+  const { transcript } = useSpeechRecognition();
   const [isStreaming, setIsStreaming] = useState(false) // 是否正在流式输出
   const [connectionMode, setConnectionMode] = useState<'websocket' | 'http'>('http') // 连接模式
+  const [showCommands, setShowCommands] = useState(false)
+  const [commandFilter, setCommandFilter] = useState('')
+  const inputRef = useRef<any>(null)
+
+  const commands = [
+    { cmd: '/shopping', desc: '添加购物清单', icon: '🛒', example: '/shopping 牛奶和鸡蛋' },
+    { cmd: '/remind', desc: '创建日程提醒', icon: '📅', example: '/remind 明天下午3点开会' },
+    { cmd: '/knowledge', desc: '搜索知识库', icon: '📚', example: '/knowledge 高血压注意事项' },
+    { cmd: '/photo', desc: '上传照片', icon: '📸', example: '/photo' },
+    { cmd: '/help', desc: '查看所有指令', icon: '📋', example: '/help' },
+  ]
+
+  const filteredCommands = commands.filter(c =>
+    c.cmd.includes(commandFilter.toLowerCase())
+  )
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null) // WebSocket连接
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 50)
   }
 
   // Auto-fill input with voice transcript
@@ -89,7 +111,7 @@ const ChatPage: React.FC = () => {
         }
       }
       
-      ws.onerror = (error) => {
+      ws.onerror = () => {
         console.warn('⚠️ WebSocket连接失败,使用HTTP模式')
         // 静默降级,不显示错误提示
         setLoading(false)
@@ -108,12 +130,48 @@ const ChatPage: React.FC = () => {
     }
   }, [])
 
+  // 共享的 Markdown 渲染组件
+  const markdownComponents = {
+    p: ({node, ...props}: any) => <p style={{ margin: '8px 0', lineHeight: 1.6 }} {...props} />,
+    h1: ({node, ...props}: any) => <h1 style={{ margin: '12px 0 8px', fontSize: '1.5em', fontWeight: 600 }} {...props} />,
+    h2: ({node, ...props}: any) => <h2 style={{ margin: '10px 0 6px', fontSize: '1.3em', fontWeight: 600 }} {...props} />,
+    h3: ({node, ...props}: any) => <h3 style={{ margin: '8px 0 4px', fontSize: '1.1em', fontWeight: 600 }} {...props} />,
+    ul: ({node, ...props}: any) => <ul style={{ margin: '8px 0', paddingLeft: '24px' }} {...props} />,
+    ol: ({node, ...props}: any) => <ol style={{ margin: '8px 0', paddingLeft: '24px' }} {...props} />,
+    li: ({node, ...props}: any) => <li style={{ margin: '4px 0', lineHeight: 1.6 }} {...props} />,
+    code: ({node, inline, ...props}: any) =>
+      inline ? (
+        <code style={{ background: '#f0f0f0', padding: '2px 6px', borderRadius: 4, fontSize: '0.9em' }} {...props} />
+      ) : (
+        <pre style={{ background: '#1e1e1e', color: '#d4d4d4', padding: '16px', borderRadius: 8, overflow: 'auto', margin: '8px 0', fontSize: '0.9em', lineHeight: 1.5 }}>
+          <code {...props} />
+        </pre>
+      ),
+    blockquote: ({node, ...props}: any) => (
+      <blockquote style={{ borderLeft: '4px solid #1890ff', paddingLeft: '16px', margin: '8px 0', color: '#666', background: '#f9f9f9', padding: '8px 16px', borderRadius: '0 8px 8px 0' }} {...props} />
+    ),
+    table: ({node, ...props}: any) => (
+      <div style={{ overflow: 'auto', margin: '8px 0' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }} {...props} />
+      </div>
+    ),
+    th: ({node, ...props}: any) => <th style={{ border: '1px solid #d9d9d9', padding: '8px 12px', background: '#fafafa', fontWeight: 600 }} {...props} />,
+    td: ({node, ...props}: any) => <td style={{ border: '1px solid #d9d9d9', padding: '8px 12px' }} {...props} />,
+    a: ({node, ...props}: any) => <a style={{ color: '#1890ff', textDecoration: 'none' }} {...props} />,
+    strong: ({node, ...props}: any) => <strong style={{ fontWeight: 600 }} {...props} />,
+    img: ({node, ...props}: any) => (
+      <img {...props} style={{ maxWidth: '100%', borderRadius: 8, margin: '8px 0', cursor: 'pointer' }}
+        onClick={() => window.open(props.src, '_blank')} />
+    ),
+  }
+
   const handleSend = async () => {
     if (!inputValue.trim() && attachedFiles.length === 0) return
 
     // 构建消息内容
     let messageContent = inputValue
-    
+    const imageUrls: { url: string; name: string }[] = []
+
     // 如果有附件,先处理文件上传
     if (attachedFiles.length > 0) {
       for (const file of attachedFiles) {
@@ -121,12 +179,14 @@ const ChatPage: React.FC = () => {
           const formData = new FormData()
           formData.append('file', file)
           formData.append('description', inputValue || `上传的文件: ${file.name}`)
-          
+
           // 判断是图片还是文档
           if (file.type.startsWith('image/')) {
             // 上传图片到照片记忆
-            await axios.post('/api/photos/upload', formData)
-            messageContent += `\n\n[已上传图片: ${file.name}]`
+            const uploadRes = await axios.post('/api/photos/upload', formData)
+            const imgUrl = uploadRes.data.oss_url || `/api/photos/${file.name}`
+            imageUrls.push({ url: imgUrl, name: file.name })
+            messageContent += `\n\n![${file.name}](${imgUrl})`
           } else {
             // 上传文档到知识库
             const text = await file.text()
@@ -150,6 +210,7 @@ const ChatPage: React.FC = () => {
       role: 'user',
       content: messageContent,
       timestamp: new Date(),
+      images: imageUrls.length > 0 ? imageUrls : undefined,
     }
 
     setMessages(prev => [...prev, userMessage])
@@ -185,21 +246,40 @@ const ChatPage: React.FC = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+      if (showCommands && filteredCommands.length === 1) {
+        setInputValue(filteredCommands[0].cmd + ' ')
+        setShowCommands(false)
+        return
+      }
+      setShowCommands(false)
       handleSend()
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setInputValue(val)
+    if (val === '/') {
+      setShowCommands(true)
+      setCommandFilter('')
+    } else if (val.startsWith('/') && !val.includes(' ')) {
+      setShowCommands(true)
+      setCommandFilter(val.slice(1))
+    } else {
+      setShowCommands(false)
     }
   }
 
   // 快捷指令
   const quickActions = [
-    { icon: <ClockCircleOutlined />, label: '创建提醒', text: '提醒我明天下午3点开会' },
-    { icon: <ShoppingCartOutlined />, label: '添加购物', text: '买牛奶和鸡蛋' },
-    { icon: <BookOutlined />, label: '搜索知识', text: '查询高血压的注意事项' },
+    { icon: <ClockCircleOutlined />, label: '创建提醒', text: '/remind 明天下午3点开会' },
+    { icon: <ShoppingCartOutlined />, label: '添加购物', text: '/shopping 牛奶和鸡蛋' },
+    { icon: <BookOutlined />, label: '搜索知识', text: '/knowledge 高血压注意事项' },
     { icon: <PictureOutlined />, label: '上传照片', action: 'upload' },
   ]
 
   const handleQuickAction = (action: any) => {
     if (action.action === 'upload') {
-      // 触发文件上传
       document.getElementById('file-upload-input')?.click()
     } else {
       setInputValue(action.text)
@@ -212,8 +292,50 @@ const ChatPage: React.FC = () => {
     setAttachedFiles(files)
   }
 
+  // 判断消息是否为确认提示
+  const isConfirmMessage = (msg: Message) =>
+    msg.role === 'assistant' && msg.content.includes('请确认是否执行')
+
+  // 获取最后一个确认消息的索引
+  const lastConfirmIndex = messages.map((m, i) => isConfirmMessage(m) ? i : -1).filter(i => i >= 0).pop() ?? -1
+
+  // 发送确认或取消
+  const handleConfirmAction = async (confirmed: boolean) => {
+    const text = confirmed ? '是' : '不'
+    const userMessage: Message = {
+      role: 'user', content: text, timestamp: new Date(),
+    }
+    setMessages(prev => [...prev, userMessage])
+    setLoading(true)
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ message: text }))
+    } else {
+      try {
+        const response = await chatAPI.sendMessage(text)
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: response.data.response, timestamp: new Date(),
+        }])
+      } catch (error) {
+        message.error('操作失败')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
   return (
-    <div style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="chat-page-container" style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .chat-page-container { height: calc(100vh - 200px); }
+        .message-bubble { transition: all 0.2s ease; }
+        .message-bubble:hover { transform: translateY(-1px); }
+        .user-bubble pre,
+        .user-bubble code { color: #333 !important; }
+        @media (max-width: 992px) {
+          .chat-page-container { height: calc(100vh - 130px) !important; }
+          .message-bubble { max-width: 85vw !important; }
+        }
+      `}</style>
       <Card 
         title={
           <Space>
@@ -228,29 +350,77 @@ const ChatPage: React.FC = () => {
       >
         <List
           dataSource={messages}
+          split={false}
           renderItem={(msg) => (
             <div
               style={{
                 display: 'flex',
                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 marginBottom: 16,
+                animation: 'fadeInUp 0.3s ease',
               }}
             >
-              <Space align="start">
+              <Space align="start" size={8}>
                 {msg.role === 'assistant' && (
-                  <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                  <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff', flexShrink: 0 }} />
                 )}
                 <Card
                   size="small"
+                  className={`message-bubble ${msg.role === 'user' ? 'user-bubble' : 'assistant-bubble'}`}
                   style={{
                     maxWidth: 600,
-                    background: msg.role === 'user' ? '#e6f7ff' : '#f5f5f5',
+                    background: msg.role === 'user' ? 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)' : '#f5f5f5',
+                    padding: '12px 16px',
+                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    boxShadow: msg.role === 'user' ? '0 2px 8px rgba(24,144,255,0.2)' : '0 1px 4px rgba(0,0,0,0.06)',
+                    border: 'none',
                   }}
                 >
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  {/* 图片展示 */}
+                  {msg.images && msg.images.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: msg.content ? 8 : 0 }}>
+                      {msg.images.map((img, i) => (
+                        <div key={i} style={{
+                          borderRadius: 8, overflow: 'hidden',
+                          border: msg.role === 'user' ? '2px solid rgba(255,255,255,0.3)' : '1px solid #e8e8e8',
+                          maxWidth: 240,
+                        }}>
+                          <img src={img.url} alt={img.name}
+                            style={{ width: '100%', height: 'auto', display: 'block', cursor: 'pointer' }}
+                            onClick={() => window.open(img.url, '_blank')}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="markdown-content" style={{ color: msg.role === 'user' ? '#fff' : '#333', lineHeight: 1.6 }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                      components={markdownComponents}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                  <div style={{ fontSize: 11, color: msg.role === 'user' ? 'rgba(255,255,255,0.6)' : '#bbb', marginTop: 4, textAlign: 'right' }}>
+                    {new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  {/* 确认按钮 */}
+                  {msg.role === 'assistant' && msg.content.includes('请确认是否执行') && !loading && (
+                    <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                      <Button size="small" type="primary" style={{ borderRadius: 6, minWidth: 70 }}
+                        onClick={() => handleConfirmAction(true)}>
+                        ✓ 确认
+                      </Button>
+                      <Button size="small" style={{ borderRadius: 6, minWidth: 70 }}
+                        onClick={() => handleConfirmAction(false)}>
+                        ✕ 取消
+                      </Button>
+                    </div>
+                  )}
                 </Card>
                 {msg.role === 'user' && (
-                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#52c41a' }} />
+                  <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#52c41a', flexShrink: 0 }} />
                 )}
               </Space>
             </div>
@@ -263,37 +433,75 @@ const ChatPage: React.FC = () => {
             display: 'flex',
             justifyContent: 'flex-start',
             marginBottom: 16,
+            animation: 'fadeInUp 0.3s ease',
           }}>
             <Space align="start">
               <Avatar icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
               <Card
                 size="small"
+                className="streaming-card"
                 style={{
                   maxWidth: 600,
-                  background: '#f5f5f5',
-                  border: '2px solid #1890ff',
+                  background: 'linear-gradient(135deg, #f0f5ff 0%, #e6f7ff 100%)',
+                  border: '1px solid #91d5ff',
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(24,144,255,0.1)',
                 }}
               >
-                <div style={{ whiteSpace: 'pre-wrap', minHeight: 24 }}>
-                  {streamingMessage}
-                  <span style={{
-                    display: 'inline-block',
-                    width: 2,
-                    height: 16,
-                    background: '#1890ff',
-                    marginLeft: 2,
-                    animation: 'blink 1s infinite'
-                  }} />
-                </div>
+                {streamingMessage ? (
+                  <div className="markdown-content" style={{ minHeight: 24, lineHeight: 1.6 }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeHighlight]}
+                      components={markdownComponents}
+                    >
+                      {streamingMessage}
+                    </ReactMarkdown>
+                    <span className="streaming-cursor" />
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 24 }}>
+                    <span className="typing-dot" style={{ animationDelay: '0s' }} />
+                    <span className="typing-dot" style={{ animationDelay: '0.15s' }} />
+                    <span className="typing-dot" style={{ animationDelay: '0.3s' }} />
+                    <span style={{ fontSize: 13, color: '#666', marginLeft: 4 }}>思考中...</span>
+                  </div>
+                )}
               </Card>
             </Space>
           </div>
         )}
-        
+
         <style>{`
           @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes typingDot {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+          }
+          .streaming-card { transition: all 0.2s; }
+          .streaming-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: #1890ff;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink 0.8s infinite;
+          }
+          .typing-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #1890ff;
+            animation: typingDot 1.2s infinite;
           }
         `}</style>
         
@@ -317,30 +525,21 @@ const ChatPage: React.FC = () => {
           </Space>
         </div>
 
-        {/* 附件显示 */}
-        {attachedFiles.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <Space wrap>
-              {attachedFiles.map((file, index) => (
-                <Tag
-                  key={index}
-                  color="blue"
-                  closable
-                  onClose={() => {
-                    const newFiles = attachedFiles.filter((_, i) => i !== index)
-                    setAttachedFiles(newFiles)
-                  }}
-                >
-                  {file.type.startsWith('image/') ? <PictureOutlined /> : <FileTextOutlined />}
-                  {' '}{file.name}
-                </Tag>
-              ))}
-            </Space>
-          </div>
-        )}
-
-        <Space.Compact style={{ width: '100%' }}>
-          {/* 文件上传按钮 */}
+        {/* 输入区域 */}
+        <div className="chat-input-area">
+          {/* 附件标签 */}
+          {attachedFiles.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <Space wrap>
+                {attachedFiles.map((file, index) => (
+                  <Tag key={index} color="blue" closable
+                    onClose={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))}>
+                    {file.type.startsWith('image/') ? <PictureOutlined /> : <FileTextOutlined />} {file.name}
+                  </Tag>
+                ))}
+              </Space>
+            </div>
+          )}
           <Upload
             id="file-upload-input"
             multiple
@@ -349,29 +548,73 @@ const ChatPage: React.FC = () => {
             showUploadList={false}
             accept="image/*,.pdf,.doc,.docx,.txt,.md"
           >
-            <Button icon={<PaperClipOutlined />} />
+            <Button size="small" icon={<PaperClipOutlined />} type="text" style={{ marginBottom: 4 }}>
+              附件
+            </Button>
           </Upload>
-
-          <TextArea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="输入消息... (Enter 发送, Shift+Enter 换行)\n支持：创建提醒、添加购物、搜索知识、上传图片/文档"
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            disabled={loading}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSend}
-            loading={loading}
-          >
-            发送
-          </Button>
-        </Space.Compact>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              {/* 指令选择浮层 */}
+              {showCommands && (
+                <div style={{
+                  position: 'absolute', bottom: '100%', left: 0, right: 0, zIndex: 100,
+                  marginBottom: 4, background: '#fff', borderRadius: 8,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)', overflow: 'hidden',
+                  maxHeight: 240, overflowY: 'auto',
+                }}>
+                  <div style={{ padding: '8px 12px', fontSize: 12, color: '#999', borderBottom: '1px solid #f0f0f0' }}>
+                    输入指令快速操作
+                  </div>
+                  {filteredCommands.map(cmd => (
+                    <div key={cmd.cmd} onClick={() => {
+                      setInputValue(cmd.cmd + ' ')
+                      setShowCommands(false)
+                      inputRef.current?.focus()
+                    }} style={{
+                      padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                      borderBottom: '1px solid #f5f5f5', transition: 'background 0.15s',
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f0f5ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{ fontSize: 18 }}>{cmd.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: '#1890ff', fontSize: 14 }}>
+                          {cmd.cmd}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#666' }}>{cmd.desc}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#bbb' }}>{cmd.example}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <TextArea
+                ref={inputRef}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="输入消息... / 可输 / 查看指令"
+                autoSize={{ minRows: 1, maxRows: 4 }}
+                disabled={loading}
+                style={{ flex: 1, borderRadius: 8 }}
+              />
+            </div>
+            <Button
+              type="primary"
+              icon={loading ? undefined : <SendOutlined />}
+              onClick={handleSend}
+              loading={loading}
+              size="large"
+              style={{ height: 40, minWidth: 80, borderRadius: 8 }}
+            >
+              {loading ? '' : '发送'}
+            </Button>
+          </div>
+        </div>
 
         <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-          💡 提示：直接说“提醒我...”、“买...”、“查询...”等，我会自动帮你操作
+          💡 输入 <span style={{ color: '#1890ff', fontWeight: 600 }}>/</span> 使用指令快速操作；直接描述需求我会先询问确认
         </div>
       </Card>
     </div>

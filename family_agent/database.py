@@ -30,21 +30,36 @@ class DatabaseManager:
                 "缺少数据库连接配置。请在环境变量中设置 DATABASE_URL，"
                 "格式: postgresql://user:password@host:port/dbname"
             )
-        self.conn = None
+        self._connection = None
         self._connect()
         self._init_tables()
 
     def _connect(self):
         """建立数据库连接"""
         try:
-            self.conn = psycopg2.connect(
+            self._connection = psycopg2.connect(
                 self.db_url,
                 cursor_factory=RealDictCursor
             )
-            self.conn.autocommit = True
+            self._connection.autocommit = True
         except Exception as e:
             print(f"数据库连接失败: {e}")
             raise
+
+    @property
+    def conn(self):
+        """自动重连的连接属性"""
+        try:
+            # Check if connection exists and is open (closed == 0 means open)
+            if not self._connection or self._connection.closed != 0:
+                self._connect()
+            else:
+                # Test the connection with a simple query
+                with self._connection.cursor() as c:
+                    c.execute("SELECT 1")
+        except (psycopg2.InterfaceError, psycopg2.OperationalError, AttributeError):
+            self._connect()
+        return self._connection
 
     def _init_tables(self):
         """初始化数据库表"""
@@ -205,6 +220,20 @@ class DatabaseManager:
                     login_time TEXT,
                     expires_at TEXT,
                     is_active BOOLEAN DEFAULT TRUE
+                )
+            """)
+
+            # 财务交易表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id SERIAL PRIMARY KEY,
+                    amount NUMERIC(12,2) NOT NULL,
+                    transaction_type TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    transaction_date DATE NOT NULL,
+                    created_by TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 
@@ -498,6 +527,113 @@ class DatabaseManager:
             """, (family_id, family_name, json.dumps(members or []), json.dumps({})))
             return True
 
+    def initialize_family_defaults(self, family_id: str, admin_name: str):
+        """为新家庭初始化默认数据"""
+        try:
+            # 1. 添加默认家庭成员模板
+            default_members = [
+                {"name": admin_name, "role": "admin", "age": 35, "side": "core", 
+                 "interaction_style": "peer", "permission": "admin", "preferences": []},
+                {"name": "妈妈", "role": "parent", "age": 33, "side": "core", 
+                 "interaction_style": "warm", "permission": "member", "preferences": []},
+                {"name": "孩子", "role": "child", "age": 8, "side": "core", 
+                 "interaction_style": "playful", "permission": "member", "preferences": []}
+            ]
+            
+            for member in default_members:
+                if member["name"] != admin_name:  # 避免重复添加管理员
+                    self.add_member(
+                        name=member["name"],
+                        role=member["role"],
+                        age=member["age"],
+                        side=member["side"],
+                        interaction_style=member["interaction_style"],
+                        permission=member["permission"],
+                        preferences=json.dumps(member["preferences"])
+                    )
+            
+            # 2. 添加初始购物清单示例
+            default_shopping = [
+                {"name": "牛奶", "quantity": "1瓶", "category": "食品", "priority": "high", "added_by": admin_name},
+                {"name": "鸡蛋", "quantity": "1盒", "category": "食品", "priority": "normal", "added_by": admin_name},
+                {"name": "面包", "quantity": "1袋", "category": "食品", "priority": "normal", "added_by": admin_name},
+                {"name": "洗洁精", "quantity": "1瓶", "category": "日用品", "priority": "low", "added_by": admin_name}
+            ]
+            
+            for item in default_shopping:
+                self.add_shopping_item(
+                    name=item["name"],
+                    quantity=item["quantity"],
+                    category=item["category"],
+                    priority=item["priority"],
+                    added_by=item["added_by"]
+                )
+            
+            # 3. 添加示例日程安排（未来7天）
+            from datetime import date, timedelta
+            today = date.today()
+            sample_reminders = [
+                {"date": (today + timedelta(days=0)).isoformat(), "event": "欢迎加入智能家庭助手！开始探索吧 🎉", "member": "all"},
+                {"date": (today + timedelta(days=1)).isoformat(), "event": "晚上7点：家庭会议 - 讨论周末计划", "member": "all"},
+                {"date": (today + timedelta(days=2)).isoformat(), "event": "上午10点：超市购物日", "member": admin_name},
+                {"date": (today + timedelta(days=3)).isoformat(), "event": "下午3点：孩子的兴趣班", "member": "孩子"},
+                {"date": (today + timedelta(days=5)).isoformat(), "event": "周末家庭活动建议：公园野餐或看电影", "member": "all"}
+            ]
+            
+            for reminder in sample_reminders:
+                self.add_reminder(
+                    date=reminder["date"],
+                    event=reminder["event"],
+                    member=reminder["member"]
+                )
+            
+            # 4. 添加欢迎消息到通知
+            welcome_notifications = [
+                {
+                    "id": f"welcome_{family_id}_1",
+                    "type": "info",
+                    "title": "👋 欢迎来到智能家庭助手！",
+                    "message": f"你好 {admin_name}！你的家庭 '{family_id}' 已创建成功。",
+                    "time": datetime.now().isoformat(),
+                    "read": False,
+                    "priority": "high"
+                },
+                {
+                    "id": f"welcome_{family_id}_2",
+                    "type": "tip",
+                    "title": "💡 快速开始提示",
+                    "message": "试试说：'提醒我明天买牛奶' 或 '添加苹果到购物清单'",
+                    "time": datetime.now().isoformat(),
+                    "read": False,
+                    "priority": "normal"
+                },
+                {
+                    "id": f"welcome_{family_id}_3",
+                    "type": "info",
+                    "title": "👨‍👩‍👧‍👦 家庭成员",
+                    "message": "已为您预设了家庭成员模板，您可以在成员管理中修改或删除。",
+                    "time": datetime.now().isoformat(),
+                    "read": False,
+                    "priority": "normal"
+                }
+            ]
+            
+            for notif in welcome_notifications:
+                self.add_notification(
+                    notification_id=notif["id"],
+                    n_type=notif["type"],
+                    title=notif["title"],
+                    message=notif["message"],
+                    time=notif["time"],
+                    read=notif["read"],
+                    priority=notif["priority"]
+                )
+            
+            return True
+        except Exception as e:
+            print(f"初始化家庭默认数据失败: {e}")
+            return False
+
     def get_family(self, family_id: str) -> Optional[Dict]:
         with self.conn.cursor() as cursor:
             cursor.execute('SELECT * FROM families WHERE family_id = %s', (family_id,))
@@ -587,3 +723,128 @@ class DatabaseManager:
         from datetime import datetime, timedelta
         with self.conn.cursor() as cursor:
             cursor.execute('DELETE FROM sessions WHERE expires_at < %s', (datetime.now().isoformat(),))
+
+    # ===== 财务管理 =====
+
+    def add_transaction(self, amount: float, transaction_type: str, category: str,
+                        transaction_date: str, description: str = '', created_by: str = ''):
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO transactions (amount, transaction_type, category, description, transaction_date, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (amount, transaction_type, category, description, transaction_date, created_by))
+            row = cursor.fetchone()
+            return row['id'] if row else None
+
+    def get_transactions(self, year: int, month: int, transaction_type: str = None,
+                         category: str = None, page: int = 1, page_size: int = 20) -> Dict:
+        with self.conn.cursor() as cursor:
+            conditions = ["EXTRACT(YEAR FROM transaction_date) = %s", "EXTRACT(MONTH FROM transaction_date) = %s"]
+            params = [year, month]
+            if transaction_type:
+                conditions.append("transaction_type = %s")
+                params.append(transaction_type)
+            if category:
+                conditions.append("category = %s")
+                params.append(category)
+
+            where = " AND ".join(conditions)
+            offset = (page - 1) * page_size
+
+            # 总数
+            cursor.execute(f"SELECT COUNT(*) AS cnt FROM transactions WHERE {where}", params)
+            total = cursor.fetchone()['cnt'] or 0
+
+            # 分页数据
+            cursor.execute(f"""
+                SELECT * FROM transactions WHERE {where}
+                ORDER BY transaction_date DESC, created_at DESC
+                LIMIT %s OFFSET %s
+            """, params + [page_size, offset])
+            items = [dict(row) for row in cursor.fetchall()]
+
+            return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+    def get_transaction_by_id(self, transaction_id: int) -> Optional[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM transactions WHERE id = %s', (transaction_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_transaction(self, transaction_id: int, **kwargs):
+        if not kwargs:
+            return False
+        set_clause = ', '.join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [transaction_id]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"UPDATE transactions SET {set_clause} WHERE id = %s", values)
+            return cursor.rowcount > 0
+
+    def delete_transaction(self, transaction_id: int):
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM transactions WHERE id = %s', (transaction_id,))
+            return cursor.rowcount > 0
+
+    def get_monthly_summary(self, year: int, month: int) -> Dict:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT transaction_type, category,
+                       SUM(amount)::float AS total,
+                       COUNT(*)::int AS count
+                FROM transactions
+                WHERE EXTRACT(YEAR FROM transaction_date) = %s
+                  AND EXTRACT(MONTH FROM transaction_date) = %s
+                GROUP BY transaction_type, category
+                ORDER BY transaction_type, total DESC
+            """, (year, month))
+            rows = cursor.fetchall()
+
+            total_income = 0.0
+            total_expense = 0.0
+            income_breakdown = []
+            expense_breakdown = []
+
+            for row in rows:
+                d = dict(row)
+                if d['transaction_type'] == 'income':
+                    total_income += d['total']
+                    income_breakdown.append(d)
+                else:
+                    total_expense += d['total']
+                    expense_breakdown.append(d)
+
+            return {
+                "total_income": round(total_income, 2),
+                "total_expense": round(total_expense, 2),
+                "balance": round(total_income - total_expense, 2),
+                "income_breakdown": income_breakdown,
+                "expense_breakdown": expense_breakdown,
+            }
+
+    def get_monthly_trend(self, months: int = 6) -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    EXTRACT(YEAR FROM transaction_date)::int AS year,
+                    EXTRACT(MONTH FROM transaction_date)::int AS month,
+                    transaction_type,
+                    SUM(amount)::float AS total
+                FROM transactions
+                WHERE transaction_date >= DATE_TRUNC('month', CURRENT_DATE) - (%s || ' months')::interval
+                GROUP BY year, month, transaction_type
+                ORDER BY year DESC, month DESC
+            """, (str(months),))
+            rows = cursor.fetchall()
+            # 组织为按月份分组
+            month_map = {}
+            for row in rows:
+                d = dict(row)
+                key = f"{d['year']}-{d['month']:02d}"
+                if key not in month_map:
+                    month_map[key] = {"month": key, "year": d['year'], "month_num": d['month'], "income": 0, "expense": 0}
+                if d['transaction_type'] == 'income':
+                    month_map[key]["income"] = d['total']
+                else:
+                    month_map[key]["expense"] = d['total']
+            return list(month_map.values())

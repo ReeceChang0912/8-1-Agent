@@ -35,7 +35,15 @@
       "Bash(echo \"PID: $!\")",
       "Bash(lsof -i:5173)",
       "Bash(npx vite *)",
-      "Bash(echo \"Frontend PID: $!\")"
+      "Bash(echo \"Frontend PID: $!\")",
+      "Bash(npx skills *)",
+      "Bash(git config *)",
+      "Bash(PYTHONIOENCODING=utf-8 python backend/restore_data.py)",
+      "Bash(rm *)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

@@ -1,0 +1,30 @@
+# 家庭智能管家 - 本地数据库配置
+# 使用 Docker Compose 运行本地 PostgreSQL
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: family-agent-db-local
+    environment:
+      POSTGRES_DB: agent
+      POSTGRES_USER: agentadmin
+      POSTGRES_PASSWORD: LFDDWHpyphWxxs7Z
+    ports:
+      - "5432:5432"
+    volumes:
+      # 持久化数据到本地目录
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentadmin -d agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+# 使用说明:
+# 1. 启动数据库: docker-compose -f docker-compose.local-db.yml up -d
+# 2. 停止数据库: docker-compose -f docker-compose.local-db.yml down
+# 3. 查看日志: docker logs -f family-agent-db-local
+# 4. 数据会保存在 ./postgres_data 目录中，不会丢失

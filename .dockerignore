@@ -1,0 +1,15 @@
+node_modules
+.git
+__pycache__
+*.pyc
+.env
+venv
+.venv
+.vscode
+.idea
+data/memory
+data/knowledge_db
+photos/*
+!photos/.gitkeep
+*.log
+.DS_Store

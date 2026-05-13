@@ -1,0 +1,327 @@
+/* PhotosPage 样式 */
+
+.photos-page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.photos-tabs {
+  width: 100%;
+}
+
+/* 顶部操作栏 */
+.photos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.photos-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.photos-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.photos-search {
+  width: 220px;
+}
+
+.photos-upload-btn {
+  min-width: 120px;
+}
+
+/* 空状态 */
+.photos-empty {
+  padding: 80px 0;
+}
+
+/* 照片网格 */
+.photos-grid {
+  width: 100%;
+}
+
+/* 照片项 */
+.photo-item {
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-item.photo-hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(24, 144, 255, 0.3);
+  border: 2px solid #1890ff;
+}
+
+.photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-mask {
+  text-align: center;
+  padding: 8px;
+}
+
+.photo-mask-desc {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.photo-mask-loc {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* 分析统计 */
+.stats-row {
+  width: 100%;
+}
+
+.stats-col {
+  margin-bottom: 16px;
+}
+
+.analyze-badge {
+  margin-left: 8px;
+}
+
+/* 分析卡片 */
+.analyze-card {
+  margin-top: 16px;
+}
+
+.progress-wrapper {
+  margin-bottom: 16px;
+}
+
+.analyze-btn {
+  margin-bottom: 16px;
+}
+
+.analyze-tips {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+.analyze-tips ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.analyze-tips li {
+  margin: 4px 0;
+}
+
+/* 相册 */
+.albums-row {
+  width: 100%;
+}
+
+.album-col {
+  margin-bottom: 16px;
+}
+
+/* ========================================== */
+/* 响应式设计 - 移动端 (<768px) */
+/* ========================================== */
+@media screen and (max-width: 767px) {
+  .photos-page-container {
+    padding: 8px;
+  }
+
+  /* 顶部操作栏移动端 */
+  .photos-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .photos-title {
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .photos-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .photos-search {
+    width: 100%;
+  }
+
+  .photos-upload-btn {
+    width: 100%;
+  }
+
+  /* 照片网格移动端 */
+  .photos-grid {
+    gap: 12px !important;
+  }
+
+  .photo-item {
+    height: 200px;
+    border-radius: 8px;
+  }
+
+  .photo-item.photo-hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+  }
+
+  /* 分析统计移动端 */
+  .stats-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .stats-col {
+    width: 100%;
+  }
+
+  .analyze-card {
+    margin-top: 12px;
+    padding: 12px;
+  }
+
+  .analyze-btn {
+    margin-top: 12px;
+  }
+
+  .analyze-tips {
+    font-size: 13px;
+  }
+
+  .analyze-tips ul {
+    padding-left: 16px;
+  }
+
+  /* 相册移动端 */
+  .albums-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .album-col {
+    width: 100%;
+  }
+
+  /* Tabs 移动端优化 */
+  .ant-tabs-nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 13px;
+  }
+
+  /* 表单移动端 */
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+
+  .ant-btn {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  /* 搜索框移动端 */
+  .ant-input-search {
+    width: 100% !important;
+  }
+
+  /* 卡片移动端 */
+  .ant-card {
+    margin-bottom: 12px;
+  }
+
+  .ant-card-body {
+    padding: 12px;
+  }
+
+  /* 空状态移动端 */
+  .photos-empty {
+    padding: 40px 0;
+  }
+}
+
+/* ========================================== */
+/* 平板端 (768px - 1024px) */
+/* ========================================== */
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+  .photos-page-container {
+    padding: 12px;
+  }
+
+  .photos-header {
+    margin-bottom: 18px;
+  }
+
+  .photos-title {
+    font-size: 20px;
+  }
+
+  .photo-item {
+    height: 220px;
+  }
+
+  .stats-col {
+    margin-bottom: 12px;
+  }
+}
+
+/* ========================================== */
+/* 桌面端 (>1024px) */
+/* ========================================== */
+@media screen and (min-width: 1024px) {
+  /* 保持默认桌面布局 */
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .photo-item {
+    cursor: default;
+  }
+
+  .photo-item.photo-hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid transparent;
+  }
+
+  .ant-btn,
+  .ant-menu-item {
+    min-height: 44px;
+  }
+
+  input,
+  textarea {
+    font-size: 16px !important;
+  }
+}

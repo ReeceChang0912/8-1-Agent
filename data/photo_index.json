@@ -4,13 +4,101 @@
     "photo_id": "photo_fb3cca86ec8d",
     "filename": "photo_fb3cca86ec8d.jpg",
     "upload_date": "2026-05-09T17:29:38.784895",
-    "description": "",
-    "tags": [],
+    "description": "照片 photo_fb3cca86ec8d",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
     "people": [],
     "event": "",
     "location": "",
-    "mood": "",
+    "mood": "neutral",
     "metadata": {},
     "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/test_upload.jpg"
+  },
+  "photo_7d273e4543d7": {
+    "id": "photo_7d273e4543d7",
+    "photo_id": "photo_7d273e4543d7",
+    "filename": "photo_7d273e4543d7.jpg",
+    "upload_date": "2026-05-11T09:10:07.778947",
+    "description": "照片 photo_7d273e4543d7",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
+    "people": [],
+    "event": "",
+    "location": "",
+    "mood": "neutral",
+    "metadata": {},
+    "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/test_photo.jpg"
+  },
+  "photo_cce5bcd44782": {
+    "id": "photo_cce5bcd44782",
+    "photo_id": "photo_cce5bcd44782",
+    "filename": "photo_cce5bcd44782.png",
+    "upload_date": "2026-05-11T10:15:58.252445",
+    "description": "照片 photo_cce5bcd44782",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
+    "people": [],
+    "event": "",
+    "location": "",
+    "mood": "neutral",
+    "metadata": {},
+    "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/digital_human.png"
+  },
+  "photo_be120a7a8719": {
+    "id": "photo_be120a7a8719",
+    "photo_id": "photo_be120a7a8719",
+    "filename": "photo_be120a7a8719.png",
+    "upload_date": "2026-05-11T10:13:14.943721",
+    "description": "照片 photo_be120a7a8719",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
+    "people": [],
+    "event": "",
+    "location": "",
+    "mood": "neutral",
+    "metadata": {},
+    "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/video_make.png"
+  },
+  "photo_f5eeb4aa012f": {
+    "id": "photo_f5eeb4aa012f",
+    "photo_id": "photo_f5eeb4aa012f",
+    "filename": "photo_f5eeb4aa012f.png",
+    "upload_date": "2026-05-11T10:13:28.325266",
+    "description": "照片 photo_f5eeb4aa012f",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
+    "people": [],
+    "event": "",
+    "location": "",
+    "mood": "neutral",
+    "metadata": {},
+    "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/ai_image_unknown.png"
+  },
+  "photo_e59069dd5bd2": {
+    "id": "photo_e59069dd5bd2",
+    "photo_id": "photo_e59069dd5bd2",
+    "filename": "photo_e59069dd5bd2.png",
+    "upload_date": "2026-05-11T10:13:57.359382",
+    "description": "照片 photo_e59069dd5bd2",
+    "tags": [
+      "照片",
+      "家庭"
+    ],
+    "people": [],
+    "event": "",
+    "location": "",
+    "mood": "neutral",
+    "metadata": {},
+    "oss_url": "https://family-agent.oss-cn-hongkong.aliyuncs.com/photos/抠取并清晰化卡片图片 (5).png"
   }
 }

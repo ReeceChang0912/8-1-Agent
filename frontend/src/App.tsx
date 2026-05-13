@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Layout, Menu, theme, Avatar, Dropdown, Space, message, Badge } from 'antd'
+import { Layout, Menu, theme, Avatar, Dropdown, message, Badge, Drawer, Button } from 'antd'
+import { MenuOutlined } from '@ant-design/icons'
 import {
   MessageOutlined,
   TeamOutlined,
@@ -14,7 +15,8 @@ import {
   UserOutlined,
   LogoutOutlined,
   BellOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  WalletOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import WorkbenchPage from './pages/WorkbenchPage'
@@ -29,6 +31,7 @@ import SkillsPage from './pages/SkillsPage'
 import MCPPage from './pages/MCPPage'
 import StatsPage from './pages/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
+import FinancePage from './pages/FinancePage'
 import LoginPage from './pages/LoginPage'
 import axios from 'axios'
 
@@ -47,6 +50,7 @@ const PAGE_ROUTES: Record<string, string> = {
   mcp: '/mcp',
   stats: '/stats',
   notifications: '/notifications',
+  finance: '/finance',
 }
 
 const ROUTE_TO_KEY: Record<string, string> = {}
@@ -61,6 +65,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userInfo, setUserInfo] = useState<any>(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const {
     token: { colorBgContainer },
   } = theme.useToken()
@@ -149,6 +154,7 @@ const App: React.FC = () => {
     { key: 'skills', icon: <ThunderboltOutlined />, label: '技能中心' },
     { key: 'smarthome', icon: <HomeOutlined />, label: '智能家居' },
     { key: 'mcp', icon: <ApiOutlined />, label: 'MCP协议' },
+    { key: 'finance', icon: <WalletOutlined />, label: '家庭财务' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
     { 
       key: 'notifications', 
@@ -185,6 +191,8 @@ const App: React.FC = () => {
         return <MCPPage />
       case 'stats':
         return <StatsPage />
+      case 'finance':
+        return <FinancePage />
       case 'notifications':
         return <NotificationsPage />
       default:
@@ -207,20 +215,33 @@ const App: React.FC = () => {
   ]
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={200} theme="dark">
-        <div style={{ 
-          height: 64, 
-          margin: 16, 
-          display: 'flex', 
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Sider width={200} theme="dark" breakpoint="lg" collapsedWidth={0}
+        style={{ height: '100vh', position: 'sticky', top: 0, left: 0, overflow: 'hidden' }}>
+        <div style={{
+          height: 64,
+          margin: 16,
+          display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: 'white',
           fontSize: 18,
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          flexShrink: 0
         }}>
           🏡 家庭管家
         </div>
+        <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 96px)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <style>{`
+          .ant-layout-sider::-webkit-scrollbar { display: none; }
+          .mobile-menu-btn { display: none !important; }
+          @media (max-width: 992px) {
+            .mobile-menu-btn { display: inline-flex !important; }
+            .ant-layout-sider { display: none !important; }
+            .ant-layout-header { padding: 0 12px !important; }
+            .ant-layout-content { margin: 12px 8px !important; padding: 12px !important; }
+          }
+        `}</style>
         <Menu
           theme="dark"
           mode="inline"
@@ -231,20 +252,22 @@ const App: React.FC = () => {
             navigate(path)
           }}
         />
+        </div>
       </Sider>
-      <Layout>
-        <Header style={{ 
-          padding: '0 24px', 
+      <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+        <Header style={{
+          padding: '0 24px',
           background: colorBgContainer,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ 
-            fontSize: 20,
-            fontWeight: 'bold',
-          }}>
-            {menuItems.find(item => item.key === selectedKey)?.label}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Button className="mobile-menu-btn" type="text" icon={<MenuOutlined />}
+              onClick={() => setMobileMenuOpen(true)} style={{ fontSize: 18 }} />
+            <div style={{ fontSize: 20, fontWeight: 'bold' }}>
+              {menuItems.find(item => item.key === selectedKey)?.label}
+            </div>
           </div>
           
           {/* 用户信息 */}
@@ -351,10 +374,25 @@ const App: React.FC = () => {
             </div>
           </Dropdown>
         </Header>
-        <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280, background: colorBgContainer }}>
+        <Content style={{ margin: '24px 16px', padding: 24, background: colorBgContainer, overflow: 'auto', height: 'calc(100vh - 64px)' }}>
           {renderContent()}
         </Content>
       </Layout>
+      <Drawer title="🏡 家庭管家" placement="left" width={240}
+        open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}
+        styles={{ body: { padding: 0 } }}>
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onClick={({ key }) => {
+            const path = PAGE_ROUTES[key] || '/'
+            navigate(path)
+            setMobileMenuOpen(false)
+          }}
+        />
+      </Drawer>
     </Layout>
   )
 }
