@@ -84,8 +84,12 @@ jobs:
     
     - name: Package files
       run: |
-        pwd && ls -la
-        tar czf deploy.tar.gz --exclude='.git' .
+        echo "=== workspace ==="
+        pwd
+        echo "=== creating tar ==="
+        tar -czf /tmp/deploy.tar.gz --exclude-vcs .
+        echo "=== tar created ==="
+        cp /tmp/deploy.tar.gz deploy.tar.gz
         ls -lh deploy.tar.gz
     - name: Upload package to server
       uses: appleboy/scp-action@v0.1.7
