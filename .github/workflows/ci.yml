@@ -92,5 +92,6 @@ jobs:
           curl -sL -o deploy.tar.gz 'https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz'
           tar xzf deploy.tar.gz --strip-components=1
           rm -f deploy.tar.gz
-          docker compose down --remove-orphans && docker compose build --no-cache && docker compose up -d || (docker-compose down --remove-orphans && docker-compose build --no-cache && docker-compose up -d)
+          [ -f .env ] || touch .env
+          docker compose down --remove-orphans && docker compose up --build -d || (docker-compose down --remove-orphans && docker-compose up --build -d)
           docker image prune -f 2>/dev/null || true"
