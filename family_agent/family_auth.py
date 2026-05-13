@@ -52,6 +52,7 @@ class UserSession:
 
 
 class FamilyAuthManager:
+    """家庭认证管理器"""
     """
     家庭认证管理器
     
@@ -179,3 +180,6 @@ class FamilyAuthManager:
         with self.db.conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM sessions WHERE is_active = TRUE")
             return cursor.fetchone()[0]
+
+# 兼容别名
+FamilyAuth = FamilyAuthManager
