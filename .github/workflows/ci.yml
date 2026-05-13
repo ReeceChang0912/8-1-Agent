@@ -81,19 +81,29 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Write .env on server
+      env:
+        ENV_CONTENT: ${{ secrets.ENV_FILE }}
+      run: |
+        printf '%s\n' "$ENV_CONTENT" > /tmp/envfile
+        sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+        export SSHPASS="${{ secrets.SERVER_PASSWORD }}"
+        sshpass -e scp -o StrictHostKeyChecking=no /tmp/envfile "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/www/wwwroot/family-agent/.env"
+
     - name: Deploy via SSH
       run: |
         sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
-        sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no \
-          "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "set -e
-          mkdir -p /www/wwwroot/family-agent
-          cd /www/wwwroot/family-agent
-          curl -sL -o deploy.tar.gz 'https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz'
-          tar xzf deploy.tar.gz --strip-components=1
-          rm -f deploy.tar.gz
-          [ -f .env ] || cat > .env <<'ENVEOF'
-${{ secrets.ENV_FILE }}
-ENVEOF
-          docker compose down && docker compose up --build -d || docker-compose down && docker-compose up --build -d
-          docker image prune -f 2>/dev/null || true"
+        export SSHPASS="${{ secrets.SERVER_PASSWORD }}"
+        sshpass -e ssh -o StrictHostKeyChecking=no \
+          "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" "
+        set -e
+        mkdir -p /www/wwwroot/family-agent
+        cd /www/wwwroot/family-agent
+        curl -sL -o deploy.tar.gz 'https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz'
+        tar xzf deploy.tar.gz --strip-components=1
+        rm -f deploy.tar.gz
+        docker rm -f family-agent-api 2>/dev/null || true
+        docker compose up --build -d || docker-compose up --build -d
+        docker image prune -f 2>/dev/null || true
+        "
