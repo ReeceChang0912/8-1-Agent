@@ -82,6 +82,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Debug - Check secrets resolution
+      run: |
+        echo "Host length: ${#SERVER_HOST}"
+        echo "User length: ${#SERVER_USER}"
+        echo "Port value: '$PORT'"
+      env:
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        PORT: ${{ secrets.SERVER_PORT || '22' }}
+
     - name: Deploy via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
