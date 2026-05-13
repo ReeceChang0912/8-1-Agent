@@ -28,12 +28,6 @@ jobs:
         uv pip install --system -r backend/requirements.txt
         uv pip install --system pytest pytest-asyncio pytest-cov
     
-    - name: Debug before tests
-      run: |
-        which python
-        python --version
-        python -m pytest --version
-        ls tests/
     - name: Run tests
       run: |
         python -m pytest tests/test_auth_merge.py \
@@ -90,7 +84,7 @@ jobs:
     
     - name: Package files
       run: |
-        tar czf /tmp/deploy.tar.gz \
+        tar czf deploy.tar.gz \
           --exclude='node_modules' \
           --exclude='.git' \
           --exclude='.venv' \
@@ -107,8 +101,8 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         password: ${{ secrets.SERVER_PASSWORD }}
         port: ${{ secrets.SERVER_PORT || '22' }}
-        source: "/tmp/deploy.tar.gz"
-        target: "/tmp/"
+        source: "deploy.tar.gz"
+        target: "/www/wwwroot/family-agent"
         strip_components: 0
 
     - name: Deploy via SSH
@@ -119,9 +113,9 @@ jobs:
         password: ${{ secrets.SERVER_PASSWORD }}
         port: ${{ secrets.SERVER_PORT || '22' }}
         script: |
-          tar xzf /tmp/deploy.tar.gz -C /www/wwwroot/family-agent
-          rm -f /tmp/deploy.tar.gz
           cd /www/wwwroot/family-agent
+          tar xzf deploy.tar.gz
+          rm -f deploy.tar.gz
           docker-compose down
           docker-compose up --build -d
           docker image prune -f
