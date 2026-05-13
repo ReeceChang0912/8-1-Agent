@@ -89,10 +89,8 @@ jobs:
           --exclude='.git' \
           --exclude='.venv' \
           --exclude='__pycache__' \
-          --exclude='*.pyc' \
           --exclude='.env' \
           --exclude='.claude' \
-          --exclude='data/*.json' \
           .
     - name: Upload package to server
       uses: appleboy/scp-action@v0.1.7
