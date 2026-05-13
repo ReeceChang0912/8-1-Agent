@@ -90,11 +90,10 @@ jobs:
         password: ${{ secrets.SERVER_PASSWORD }}
         port: ${{ secrets.SERVER_PORT || '22' }}
         script: |
-          cd /www/wwwroot/family-agent
-          curl -sL -o deploy.tar.gz \
-            "https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz"
+          mkdir -p /www/wwwroot/family-agent
+          cd /www/wwwroot/family-agent || exit 1
+          (curl -sL -o deploy.tar.gz "https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz" || wget -q -O deploy.tar.gz "https://github.com/ReeceChang0912/8-1-Agent/archive/refs/heads/main.tar.gz") || exit 1
           tar xzf deploy.tar.gz --strip-components=1
           rm -f deploy.tar.gz
-          docker-compose down
-          docker-compose up --build -d
-          docker image prune -f
+          (docker compose down && docker compose up --build -d) || (docker-compose down && docker-compose up --build -d) || exit 1
+          docker image prune -f 2>/dev/null || true
