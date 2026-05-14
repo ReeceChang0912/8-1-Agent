@@ -152,15 +152,16 @@ const MembersPage: React.FC = () => {
       {/* 家庭号显示 */}
       {familyInfo && (
         <Alert
+          className="family-info-alert"
           message={
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
               <span>
                 <HomeOutlined style={{ marginRight: 8 }} />
                 <strong>{familyInfo.family_name}</strong> | 家庭号: <strong style={{ fontSize: 18, color: '#1890ff' }}>{familyInfo.family_id}</strong>
               </span>
-              <Button 
-                size="small" 
-                icon={<CopyOutlined />} 
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
                 onClick={copyFamilyId}
               >
                 复制家庭号

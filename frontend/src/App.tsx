@@ -232,16 +232,6 @@ const App: React.FC = () => {
           🏡 家庭管家
         </div>
         <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 96px)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <style>{`
-          .ant-layout-sider::-webkit-scrollbar { display: none; }
-          .mobile-menu-btn { display: none !important; }
-          @media (max-width: 992px) {
-            .mobile-menu-btn { display: inline-flex !important; }
-            .ant-layout-sider { display: none !important; }
-            .ant-layout-header { padding: 0 12px !important; }
-            .ant-layout-content { margin: 12px 8px !important; padding: 12px !important; }
-          }
-        `}</style>
         <Menu
           theme="dark"
           mode="inline"
@@ -260,12 +250,14 @@ const App: React.FC = () => {
           background: colorBgContainer,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          height: 64,
+          lineHeight: '64px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Button className="mobile-menu-btn" type="text" icon={<MenuOutlined />}
               onClick={() => setMobileMenuOpen(true)} style={{ fontSize: 18 }} />
-            <div style={{ fontSize: 20, fontWeight: 'bold' }}>
+            <div style={{ fontSize: 20, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
               {menuItems.find(item => item.key === selectedKey)?.label}
             </div>
           </div>
@@ -332,16 +324,17 @@ const App: React.FC = () => {
               </div>
             )}
           >
-            <div 
-              style={{ 
-                cursor: 'pointer', 
-                padding: '8px 16px', 
+            <div
+              className="header-user-avatar"
+              style={{
+                cursor: 'pointer',
+                padding: '6px 16px',
                 borderRadius: 12,
                 transition: 'all 0.3s',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
+                gap: 8,
                 boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
                 border: 'none'
               }}
@@ -354,16 +347,17 @@ const App: React.FC = () => {
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)'
               }}
             >
-              <Avatar 
-                size={36} 
-                icon={<UserOutlined />} 
-                style={{ 
+              <Avatar
+                size={32}
+                icon={<UserOutlined />}
+                style={{
                   backgroundColor: 'rgba(255,255,255,0.2)',
                   border: '2px solid rgba(255,255,255,0.4)',
-                  backdropFilter: 'blur(10px)'
-                }} 
+                  backdropFilter: 'blur(10px)',
+                  flexShrink: 0
+                }}
               />
-              <div style={{ lineHeight: 1.2, color: 'white' }}>
+              <div className="header-user-info" style={{ lineHeight: 1.2, color: 'white' }}>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>
                   {userInfo?.member_name}
                 </div>

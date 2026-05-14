@@ -196,41 +196,41 @@ const SkillsPage: React.FC = () => {
   return (
     <div>
       {/* 统计卡片 */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1890ff' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
                 {stats.total}
               </div>
               <div style={{ color: '#666', marginTop: 8 }}>总技能数</div>
             </div>
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#52c41a' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#52c41a' }}>
                 {stats.enabled}
               </div>
               <div style={{ color: '#666', marginTop: 8 }}>已启用</div>
             </div>
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#f5222d' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#f5222d' }}>
                 {stats.disabled}
               </div>
               <div style={{ color: '#666', marginTop: 8 }}>已禁用</div>
             </div>
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, fontWeight: 'bold', color: '#722ed1' }}>
+              <div style={{ fontSize: 24, fontWeight: 'bold', color: '#722ed1' }}>
                 {stats.totalUsage}
               </div>
               <div style={{ color: '#666', marginTop: 8 }}>总使用次数</div>
@@ -241,8 +241,8 @@ const SkillsPage: React.FC = () => {
 
       {/* 搜索和筛选 */}
       <Card style={{ marginBottom: 16 }}>
-        <Row gutter={16}>
-          <Col span={16}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={16}>
             <Input.Search
               placeholder="搜索技能名称或描述..."
               value={searchText}
@@ -252,7 +252,7 @@ const SkillsPage: React.FC = () => {
               size="large"
             />
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Select
               placeholder="选择分类"
               value={selectedCategory}

@@ -122,22 +122,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      justifyContent: 'center',
       alignItems: 'center',
+      padding: 16,
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
-      <Card 
-        style={{ 
-          width: 450, 
+      <Card
+        style={{
+          width: '100%',
+          maxWidth: 450,
           boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          borderRadius: 16
+          borderRadius: 16,
+          margin: '0 auto'
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ margin: 0 }}>
+          <Title level={2} style={{ margin: 0, fontSize: 24 }}>
             🏡 家庭智能管家
           </Title>
           <Text type="secondary">温馨陪伴每一天</Text>

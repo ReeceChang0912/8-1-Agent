@@ -42,8 +42,8 @@ const StatsPage: React.FC = () => {
 
   return (
     <div>
-      <Row gutter={16}>
-        <Col span={6}>
+      <Row gutter={[16, 16]}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <Statistic
               title="家庭成员"
@@ -53,7 +53,7 @@ const StatsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <Statistic
               title="日程提醒"
@@ -63,7 +63,7 @@ const StatsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <Statistic
               title="记忆条数"
@@ -73,7 +73,7 @@ const StatsPage: React.FC = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <Statistic
               title="知识文档"
@@ -85,8 +85,8 @@ const StatsPage: React.FC = () => {
         </Col>
       </Row>
 
-      <Row gutter={16} style={{ marginTop: 16 }}>
-        <Col span={12}>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} md={12}>
           <Card title="记忆类型分布">
             {stats.memory_stats?.by_type ? (
               Object.entries(stats.memory_stats.by_type).map(([type, count]: [string, any]) => (
@@ -104,7 +104,7 @@ const StatsPage: React.FC = () => {
           </Card>
         </Col>
 
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Card title="知识库统计">
             {stats.kb_stats ? (
               <>
@@ -126,14 +126,14 @@ const StatsPage: React.FC = () => {
       </Row>
 
       <Card title="系统信息" style={{ marginTop: 16 }}>
-        <Row gutter={16}>
-          <Col span={8}>
+        <Row gutter={[16, 16]}>
+          <Col xs={8} md={8}>
             <Statistic title="LLM 提供商" value="DeepSeek" />
           </Col>
-          <Col span={8}>
+          <Col xs={8} md={8}>
             <Statistic title="数据库" value="ChromaDB" />
           </Col>
-          <Col span={8}>
+          <Col xs={8} md={8}>
             <Statistic title="版本" value="1.0.0" />
           </Col>
         </Row>

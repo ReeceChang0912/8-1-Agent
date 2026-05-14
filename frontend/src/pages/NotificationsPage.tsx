@@ -133,36 +133,38 @@ const NotificationsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px' }}>
+    <div className="notifications-container">
       <Card>
-        <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Title level={3} style={{ margin: 0 }}>
+        <div className="notifications-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 8 }}>
+          <Title level={3} style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 20 }}>
             <Badge count={unreadCount} offset={[-5, 5]}>
               <BellOutlined style={{ marginRight: 8 }} />
               消息通知
             </Badge>
           </Title>
-          
-          <Space>
-            <Button 
+
+          <div className="notifications-btn-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              size={window.innerWidth <= 767 ? 'small' : 'middle'}
               type={activeTab === 'unread' ? 'primary' : 'default'}
               onClick={() => setActiveTab('unread')}
             >
               未读 ({unreadCount})
             </Button>
-            <Button 
+            <Button
+              size={window.innerWidth <= 767 ? 'small' : 'middle'}
               type={activeTab === 'all' ? 'primary' : 'default'}
               onClick={() => setActiveTab('all')}
             >
               全部
             </Button>
             {unreadCount > 0 && (
-              <Button onClick={handleMarkAllRead}>
+              <Button size={window.innerWidth <= 767 ? 'small' : 'middle'} onClick={handleMarkAllRead}>
                 <CheckCircleOutlined /> 全部已读
               </Button>
             )}
-          </Space>
-        </Space>
+          </div>
+        </div>
 
         <Spin spinning={loading}>
           {notifications.length === 0 ? (

@@ -237,12 +237,13 @@ const KnowledgePage: React.FC = () => {
               form={searchForm}
               onFinish={handleSearch}
               layout="inline"
+              className="knowledge-search-form"
               style={{ marginBottom: 24 }}
             >
               <Form.Item
                 name="query"
                 rules={[{ required: true, message: '请输入搜索内容' }]}
-                style={{ flex: 1, minWidth: 300 }}
+                style={{ flex: 1, minWidth: 250 }}
               >
                 <Input
                   placeholder="输入你想查询的内容..."

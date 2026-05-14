@@ -48,8 +48,7 @@ interface HolidayItem {
 }
 
 const WorkbenchPage: React.FC = () => {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [aiNews, setAiNews] = useState<NewsItem[]>([])
   const [internetNews, setInternetNews] = useState<NewsItem[]>([])
@@ -64,42 +63,60 @@ const WorkbenchPage: React.FC = () => {
   }, [])
 
   const fetchAll = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [weatherRes, aiRes, internetRes, investRes, briefingRes, holidayRes] = await Promise.allSettled([
-        axios.get('/api/workbench/weather', { params: { city: '昆明' } }),
-        axios.get('/api/workbench/news', { params: { category: 'ai', limit: 6 } }),
-        axios.get('/api/workbench/news', { params: { category: 'internet', limit: 6 } }),
-        axios.get('/api/workbench/news', { params: { category: 'investment', limit: 5 } }),
-        axios.get('/api/workbench/briefing'),
-        axios.get('/api/workbench/holidays'),
-      ])
+    // 逐个发起请求，每个接口独立更新状态
+    // 先加载完成的区块先显示，不再互相等待
+    const fetchWeather = axios.get('/api/workbench/weather', { params: { city: '昆明' } })
+      .then(res => setWeather(res.data.data))
+      .catch(() => {})
 
-      if (weatherRes.status === 'fulfilled') setWeather(weatherRes.value.data.data)
-      if (aiRes.status === 'fulfilled') setAiNews(aiRes.value.data.items)
-      if (internetRes.status === 'fulfilled') setInternetNews(internetRes.value.data.items)
-      if (investRes.status === 'fulfilled') setInvestmentNews(investRes.value.data.items)
-      if (briefingRes.status === 'fulfilled') setBriefing(briefingRes.value.data.data)
-      if (holidayRes.status === 'fulfilled') setHolidays(holidayRes.value.data.items)
-    } catch {
-      setError('部分数据加载失败')
-    } finally {
-      setLoading(false)
-    }
+    const fetchAiNews = axios.get('/api/workbench/news', { params: { category: 'ai', limit: 6 } })
+      .then(res => setAiNews(res.data.items))
+      .catch(() => {})
+
+    const fetchInternetNews = axios.get('/api/workbench/news', { params: { category: 'internet', limit: 6 } })
+      .then(res => setInternetNews(res.data.items))
+      .catch(() => {})
+
+    const fetchInvestNews = axios.get('/api/workbench/news', { params: { category: 'investment', limit: 5 } })
+      .then(res => setInvestmentNews(res.data.items))
+      .catch(() => {})
+
+    const fetchBriefing = axios.get('/api/workbench/briefing')
+      .then(res => setBriefing(res.data.data))
+      .catch(() => {})
+
+    const fetchHolidays = axios.get('/api/workbench/holidays')
+      .then(res => setHolidays(res.data.items))
+      .catch(() => {})
+
+    // 等全部完成才移除初始加载状态
+    await Promise.allSettled([fetchWeather, fetchAiNews, fetchInternetNews, fetchInvestNews, fetchBriefing, fetchHolidays])
+    setInitialLoading(false)
   }
 
-  if (loading) {
+  // 首次加载显示骨架屏
+  if (initialLoading && !weather && aiNews.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 0' }}>
-        <Spin size="large" />
-        <div style={{ marginTop: 16, color: '#999' }}>加载工作台数据...</div>
+      <div style={{ padding: 0 }}>
+        <TaskNotification memberName={localStorage.getItem('member_name') || ''} />
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card style={{ borderRadius: 12 }}>
+              <Spin>
+                <div style={{ height: 180 }} />
+              </Spin>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card style={{ borderRadius: 12 }}>
+              <Spin>
+                <div style={{ height: 180 }} />
+              </Spin>
+            </Card>
+          </Col>
+        </Row>
       </div>
     )
-  }
-
-  if (error) {
-    return <Alert type="warning" message={error} banner closable />
   }
 
   const WeatherIcon = ({ code }: { code: string }) => {

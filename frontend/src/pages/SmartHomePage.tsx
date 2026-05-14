@@ -67,7 +67,7 @@ const SmartHomePage: React.FC = () => {
 
       <Card title="快速操作" style={{ marginBottom: 16 }}>
         <List
-          grid={{ gutter: 16, column: 4 }}
+          grid={{ gutter: 12, xs: 2, sm: 4, md: 4 }}
           dataSource={quickActions}
           renderItem={(action) => (
             <List.Item>

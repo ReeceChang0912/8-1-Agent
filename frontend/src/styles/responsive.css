@@ -1,85 +1,505 @@
-/* 响应式设计 */
+/* ============================================
+   家庭智能管家 — 响应式设计 (Mobile-First)
+   ============================================ */
 
-/* 移动端 (<768px) */
+/* ---------- 全局重置 ---------- */
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+/* 防止 iOS 上 input 自动缩放 */
 @media screen and (max-width: 767px) {
-  /* 隐藏侧边栏,使用底部导航 */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* ---------- 主布局响应式 ---------- */
+.mobile-menu-btn {
+  display: none !important;
+}
+
+@media (max-width: 992px) {
+  .mobile-menu-btn {
+    display: inline-flex !important;
+  }
   .ant-layout-sider {
     display: none !important;
   }
-  
-  /* 头部简化 */
   .ant-layout-header {
     padding: 0 12px !important;
+    height: 56px !important;
+    line-height: 56px !important;
   }
-  
-  /* 内容区域调整 */
   .ant-layout-content {
-    margin: 8px !important;
+    margin: 12px 8px !important;
+    padding: 12px !important;
+    min-height: calc(100vh - 56px) !important;
+  }
+
+  /* 用户下拉在移动端缩小 */
+  .header-user-info {
+    display: none !important;
+  }
+  .header-user-avatar {
+    padding: 4px 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ant-layout-content {
+    margin: 8px 4px !important;
+    padding: 8px !important;
+  }
+}
+
+/* ---------- 触摸优化 ---------- */
+@media (hover: none) and (pointer: coarse) {
+  .ant-btn, .ant-menu-item, .ant-list-item {
+    min-height: 44px;
+  }
+}
+
+/* ---------- 统计卡片 (Col span={6}) ---------- */
+/* 针对未设置响应式断点的 Col span={6} 强制2列布局 */
+@media (max-width: 767px) {
+  /* StatsPage, SkillsPage 的四列统计 */
+  .ant-row > .ant-col.ant-col-6 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 超小屏幕改为一列 */
+  .ant-row > .ant-col.ant-col-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+  /* ShoppingPage 的 xs=12 也改为一列 */
+  .ant-row > .ant-col.ant-col-12 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- 表格横向滚动 ---------- */
+@media (max-width: 767px) {
+  .ant-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ant-table-wrapper .ant-table {
+    min-width: 600px;
+  }
+
+  /* 小屏表格更紧凑 */
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px 6px !important;
+    font-size: 13px;
+  }
+
+  /* 表格中按钮文字隐藏，只留图标 */
+  .ant-table-wrapper .ant-btn:not(.ant-btn-icon-only) span:not(.anticon) {
+    display: none;
+  }
+  .ant-table-wrapper .ant-btn {
+    padding: 4px 6px !important;
+  }
+}
+
+/* ---------- 按钮全宽适配 ---------- */
+@media (max-width: 767px) {
+  .ant-btn:not(.ant-btn-circle):not(.ant-btn-icon-only) {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  /* 特殊：表格操作按钮和额外按钮不强制全宽 */
+  .ant-table-wrapper .ant-btn,
+  .ant-card-extra .ant-btn,
+  .ant-form .ant-btn + .ant-btn {
+    width: auto !important;
+  }
+}
+
+/* ---------- 表单适配 ---------- */
+@media (max-width: 767px) {
+  .ant-form-item {
+    margin-bottom: 12px !important;
+  }
+
+  /* inline 表单垂直堆叠 */
+  .ant-form-inline {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .ant-form-inline .ant-form-item {
+    margin-right: 0 !important;
+    width: 100%;
+  }
+  .ant-form-inline .ant-form-item .ant-form-item-control-input {
+    width: 100%;
+  }
+  .ant-form-inline .ant-form-item .ant-col {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* 日期选择器全宽 */
+  .ant-picker {
+    width: 100%;
+  }
+
+  /* Select 全宽适配 inline 表单 */
+  .ant-form-inline .ant-select {
+    width: 100% !important;
+  }
+}
+
+/* ---------- 卡片适配 ---------- */
+@media (max-width: 767px) {
+  .ant-card {
+    margin-bottom: 8px !important;
+  }
+  .ant-card-body {
     padding: 12px !important;
   }
-  
-  /* 卡片适配 */
-  .ant-card {
-    margin-bottom: 8px;
+  .ant-card-head {
+    padding: 0 12px !important;
+    min-height: 44px !important;
   }
-  
-  /* 聊天消息适配 */
+  .ant-card-head-title {
+    font-size: 14px !important;
+    padding: 10px 0 !important;
+  }
+  .ant-card-extra {
+    padding: 10px 0 !important;
+  }
+}
+
+/* ---------- flex 布局换行 ---------- */
+@media (max-width: 767px) {
+  /* SchedulePage 左右布局 */
+  div[style*="display: flex"][style*="gap"] {
+    flex-direction: column !important;
+  }
+  div[style*="display: flex"][style*="gap"] > div,
+  div[style*="display: flex"][style*="gap"] > .ant-card {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  /* MCPPage 左右布局 */
+  .mcp-container {
+    flex-direction: column !important;
+  }
+  .mcp-container > .ant-card:first-child {
+    width: 100% !important;
+    max-height: 240px !important;
+    overflow-y: auto !important;
+  }
+  .mcp-container > .ant-card:last-child {
+    flex: none !important;
+  }
+}
+
+/* ---------- 工作台 WorkbenchPage ---------- */
+@media (max-width: 767px) {
+  .ant-card .ant-statistic {
+    text-align: center;
+  }
+  .ant-card .ant-statistic-title {
+    font-size: 12px !important;
+  }
+  .ant-card .ant-statistic-content {
+    font-size: 22px !important;
+  }
+
+  /* 天气卡片 */
+  .weather-forecast-col {
+    padding: 4px !important;
+  }
+  .weather-forecast-col .ant-typography {
+    font-size: 11px !important;
+  }
+
+  /* 简报 */
+  .briefing-icon-bg {
+    display: none !important;
+  }
+
+  /* 新闻列表 */
+  .ant-list-item-meta-title {
+    font-size: 13px !important;
+  }
+  .ant-list-item-meta-description {
+    font-size: 12px !important;
+  }
+
+  /* 快速指令区域 */
+  .quick-actions {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding-bottom: 8px;
+  }
+  .quick-actions .ant-btn {
+    width: auto !important;
+    margin-bottom: 0;
+    margin-right: 8px;
+  }
+}
+
+/* ---------- 聊天 ChatPage ---------- */
+@media (max-width: 767px) {
   .chat-message-card {
     max-width: 85vw !important;
   }
-  
-  /* 表格滚动 */
-  .ant-table-wrapper {
-    overflow-x: auto;
+
+  /* 聊天输入区 */
+  .chat-input-area .ant-input-affix-wrapper {
+    border-radius: 20px !important;
   }
-  
-  /* 表单适配 */
-  .ant-form-item {
-    margin-bottom: 12px;
+
+  /* 快捷指令 */
+  .chat-commands-panel {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 50vh !important;
+    border-radius: 16px 16px 0 0 !important;
   }
-  
-  /* 按钮适配 */
-  .ant-btn {
-    width: 100%;
-    margin-bottom: 8px;
+}
+
+/* ---------- 照片 PhotosPage ---------- */
+@media (max-width: 767px) {
+  .photos-header {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
   }
-  
-  /* 快捷指令横向滚动 */
-  .quick-actions {
-    overflow-x: auto;
+  .photos-header .photos-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+  .photos-header .photos-actions > * {
+    flex: 1 !important;
+  }
+  .photos-header .photos-actions .ant-input-search {
+    flex: 1 !important;
+  }
+  .photos-upload-btn {
     white-space: nowrap;
+    padding: 4px 12px !important;
   }
 }
 
-/* 平板 (768px - 1024px) */
-@media screen and (min-width: 768px) and (max-width: 1023px) {
-  .ant-layout-sider {
-    width: 160px !important;
-  }
-  
-  .ant-card {
-    margin-bottom: 12px;
+/* ---------- 智能家居 SmartHomePage ---------- */
+@media (max-width: 767px) {
+  .ant-list-grid .ant-col {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
   }
 }
 
-/* 桌面 (>1024px) */
-@media screen and (min-width: 1024px) {
-  /* 正常布局 */
-}
-
-/* 通用优化 */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* 触摸优化 */
-@media (hover: none) and (pointer: coarse) {
-  /* 移动端触摸设备 */
-  .ant-btn, .ant-menu-item {
-    min-height: 44px; /* iOS建议的最小触摸区域 */
+/* ---------- 财务 FinancePage ---------- */
+@media (max-width: 767px) {
+  .finance-chart-row {
+    flex-direction: column !important;
   }
-  
-  input, textarea {
-    font-size: 16px !important; /* 防止iOS自动缩放 */
+  .finance-chart-row .ant-card-body {
+    padding: 8px !important;
+  }
+
+  /* 图表自适应高度 */
+  .recharts-responsive-container {
+    min-height: 200px !important;
+  }
+
+  /* 饼图右侧图例在移动端移到下方 */
+  .finance-pie-legend {
+    width: 100% !important;
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .finance-pie-legend > div {
+    flex: 0 0 calc(50% - 8px);
+    font-size: 12px !important;
+  }
+
+  /* 交易筛选栏 */
+  .finance-filters {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .finance-filters > .ant-col {
+    flex: 0 0 calc(50% - 8px) !important;
+    max-width: calc(50% - 8px) !important;
+  }
+  .finance-filters > .ant-col:last-child {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .finance-filters > .ant-col {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- 知识库 KnowledgePage ---------- */
+@media (max-width: 767px) {
+  /* 文档列表项的紧凑显示 */
+  .knowledge-doc-item {
+    padding: 10px !important;
+  }
+
+  /* 搜索表单全宽 */
+  .knowledge-search-form .ant-form-item {
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* 分类选择器全宽 */
+  .knowledge-search-form .ant-select {
+    width: 100% !important;
+  }
+
+  /* Modal 宽度自适应 */
+  .ant-modal {
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+  }
+  .ant-modal-content {
+    padding: 16px !important;
+  }
+  .ant-modal-body {
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* ---------- 技能中心 SkillsPage ---------- */
+@media (max-width: 767px) {
+  /* 搜索和筛选行 */
+  .skills-filter-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .skills-filter-row > .ant-col {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ---------- 通知 NotificationsPage ---------- */
+@media (max-width: 767px) {
+  /* 移除多余的padding，因为ant-layout-content已有 */
+  .notifications-container {
+    padding: 0 !important;
+  }
+
+  .notifications-header {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+  .notifications-header .ant-list-item-action {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+
+  .notifications-btn-group {
+    display: flex !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+  }
+  .notifications-btn-group .ant-btn {
+    flex: 1 !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* 列表各项间距 */
+  .ant-list-item {
+    padding: 10px 12px !important;
+  }
+
+  /* 徽章计数调整 */
+  .ant-badge-count {
+    font-size: 11px !important;
+  }
+}
+
+/* ---------- 成员管理 MembersPage ---------- */
+@media (max-width: 767px) {
+  /* 家庭号 Alert 在移动端 */
+  .family-info-alert > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .family-info-alert .ant-btn {
+    align-self: flex-end !important;
+  }
+}
+
+/* ---------- 知识库详情弹窗 ---------- */
+@media (max-width: 767px) {
+  .knowledge-detail-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    top: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .knowledge-detail-modal .ant-modal-content {
+    border-radius: 0 !important;
+    min-height: 100vh !important;
+  }
+}
+
+/* ---------- 通用弹窗优化 ---------- */
+@media (max-width: 767px) {
+  .ant-modal-confirm-body {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .ant-modal-confirm-body .ant-modal-confirm-title {
+    margin-top: 8px !important;
+  }
+}
+
+/* ---------- 加载状态 ---------- */
+@media (max-width: 767px) {
+  .ant-spin-nested-loading > div > .ant-spin {
+    max-height: 200px !important;
+  }
+  .ant-empty {
+    padding: 20px 0 !important;
+  }
+  .ant-empty-image {
+    height: 60px !important;
+  }
+}
+
+/* ---------- 底部版本号 ---------- */
+@media (max-width: 767px) {
+  .footer-version {
+    font-size: 11px !important;
   }
 }

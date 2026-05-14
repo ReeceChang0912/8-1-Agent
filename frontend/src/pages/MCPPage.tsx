@@ -83,7 +83,7 @@ const MCPPage: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 16 }}>
+    <div className="mcp-container" style={{ display: 'flex', gap: 16 }}>
       <Card title="🔧 可用工具" style={{ width: 400 }}>
         <List
           dataSource={tools}

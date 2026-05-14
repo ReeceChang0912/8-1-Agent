@@ -401,7 +401,7 @@ useEffect(() => {
         }
         style={{ marginBottom: 16 }}
       >
-        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]} className="finance-filters" style={{ marginBottom: 16 }}>
           <Col>
             <DatePicker
               picker="month"
