@@ -13,6 +13,8 @@ router = APIRouter()
 class ReminderCreate(BaseModel):
     date: str
     event: str
+    member: str = ""
+    family_id: str = ""
 
 
 def get_agent():
@@ -26,10 +28,13 @@ def get_recommender() -> SmartScheduleRecommender:
 
 
 @router.get("/reminders")
-async def get_reminders():
+async def get_reminders(family_id: str = ""):
     """获取所有日程"""
     agent = get_agent()
-    return {"reminders": agent.reminders}
+    if agent.db:
+        return {"reminders": agent.db.get_all_reminders(family_id=family_id)}
+    reminders = [item for item in agent.reminders if item.get("family_id", "") == (family_id or "")]
+    return {"reminders": reminders}
 
 
 @router.post("/reminders", status_code=201)
@@ -41,20 +46,28 @@ async def add_reminder(reminder_data: ReminderCreate):
     # 同时写入数据库
     if agent.db:
         try:
-            agent.db.add_reminder(reminder_dict['date'], reminder_dict['event'])
+            agent.db.add_reminder(
+                reminder_dict['date'],
+                reminder_dict['event'],
+                member=reminder_dict.get('member', ''),
+                family_id=reminder_dict.get('family_id', ''),
+            )
         except Exception as e:
             print(f"保存日程到数据库失败: {e}")
     return {"success": True, "message": "日程已添加"}
 
 
 @router.delete("/reminders/{reminder_id}")
-async def remove_reminder(reminder_id: int):
+async def remove_reminder(reminder_id: int, family_id: str = ""):
     """删除日程"""
     agent = get_agent()
-    agent.reminders = [r for r in agent.reminders if r.get('id') != reminder_id]
+    agent.reminders = [
+        r for r in agent.reminders
+        if r.get('id') != reminder_id or r.get('family_id', '') != (family_id or '')
+    ]
     if agent.db:
         try:
-            agent.db.remove_reminder(reminder_id)
+            agent.db.remove_reminder(reminder_id, family_id=family_id)
         except Exception as e:
             print(f"从数据库删除日程失败: {e}")
     return {"success": True, "message": "日程已删除"}

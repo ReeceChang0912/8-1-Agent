@@ -85,13 +85,14 @@ class ShoppingListManager:
         priority: str = "normal",
         assigned_to: str = "",
         notes: str = "",
-        added_by: str = ""
+        added_by: str = "",
+        family_id: str = ""
     ) -> ShoppingItem:
         """添加购物项"""
         if self.db:
             self.db.add_shopping_item(
                 name=name, quantity=quantity, category=category,
-                priority=priority, added_by=added_by, status='pending'
+                priority=priority, added_by=added_by, status='pending', family_id=family_id
             )
         # 返回对象（用于兼容旧接口）
         return ShoppingItem(
@@ -100,42 +101,42 @@ class ShoppingListManager:
             notes=notes, added_by=added_by
         )
 
-    def remove_item(self, item_id: int) -> bool:
+    def remove_item(self, item_id: int, family_id: str = "") -> bool:
         """删除购物项"""
         if self.db:
-            return self.db.remove_shopping_item(item_id)
+            return self.db.remove_shopping_item(item_id, family_id=family_id)
         return False
 
-    def mark_purchased(self, item_id: int) -> bool:
+    def mark_purchased(self, item_id: int, family_id: str = "") -> bool:
         """标记为已购买"""
         if self.db:
-            return self.db.update_shopping_item(item_id, status='purchased')
+            return self.db.update_shopping_item(item_id, family_id=family_id, status='purchased')
         return False
 
-    def mark_unpurchased(self, item_id: int) -> bool:
+    def mark_unpurchased(self, item_id: int, family_id: str = "") -> bool:
         """标记为未购买"""
         if self.db:
-            return self.db.update_shopping_item(item_id, status='pending')
+            return self.db.update_shopping_item(item_id, family_id=family_id, status='pending')
         return False
 
-    def toggle_purchased(self, item_id: int) -> bool:
+    def toggle_purchased(self, item_id: int, family_id: str = "") -> bool:
         """切换购买状态"""
-        items = self.get_items()
+        items = self.get_items(family_id=family_id)
         for item in items:
             if item.get('id') == item_id:
                 if item.get('status') == 'purchased':
-                    return self.mark_unpurchased(item_id)
+                    return self.mark_unpurchased(item_id, family_id=family_id)
                 else:
-                    return self.mark_purchased(item_id)
+                    return self.mark_purchased(item_id, family_id=family_id)
         return False
 
-    def update_item(self, item_id: int, **kwargs) -> bool:
+    def update_item(self, item_id: int, family_id: str = "", **kwargs) -> bool:
         """更新购物项"""
         if self.db:
             # 过滤出可更新的字段
             allowed = {'name', 'quantity', 'category', 'priority', 'notes'}
             updates = {k: v for k, v in kwargs.items() if k in allowed}
-            return self.db.update_shopping_item(item_id, **updates)
+            return self.db.update_shopping_item(item_id, family_id=family_id, **updates)
         return False
 
     def get_items(
@@ -143,7 +144,8 @@ class ShoppingListManager:
         category: str = None,
         priority: str = None,
         purchased: bool = None,
-        assigned_to: str = None
+        assigned_to: str = None,
+        family_id: str = ""
     ) -> List[Dict]:
         """获取购物项（支持过滤）"""
         if not self.db:
@@ -151,7 +153,7 @@ class ShoppingListManager:
         
         # 先获取所有或按状态过滤
         status = 'purchased' if purchased else ('pending' if purchased is False else None)
-        items = self.db.get_all_shopping_items(status=status)
+        items = self.db.get_all_shopping_items(status=status, family_id=family_id)
         
         # 内存过滤（简化实现）
         if category:
@@ -167,12 +169,12 @@ class ShoppingListManager:
         
         return items
 
-    def get_shopping_summary(self) -> Dict:
+    def get_shopping_summary(self, family_id: str = "") -> Dict:
         """获取购物清单摘要"""
         if not self.db:
             return {}
         
-        all_items = self.db.get_all_shopping_items()
+        all_items = self.db.get_all_shopping_items(family_id=family_id)
         total = len(all_items)
         purchased = sum(1 for i in all_items if i.get('status') == 'purchased')
         unpurchased = total - purchased
@@ -229,15 +231,15 @@ class ShoppingListManager:
         
         return route
 
-    def clear_purchased(self) -> int:
+    def clear_purchased(self, family_id: str = "") -> int:
         """清除已购买的项"""
         if not self.db:
             return 0
         
-        items = self.db.get_all_shopping_items(status='purchased')
+        items = self.db.get_all_shopping_items(status='purchased', family_id=family_id)
         count = len(items)
         for item in items:
-            self.db.remove_shopping_item(item['id'])
+            self.db.remove_shopping_item(item['id'], family_id=family_id)
         return count
 
     def get_smart_suggestions(self, member: str) -> List[Dict]:

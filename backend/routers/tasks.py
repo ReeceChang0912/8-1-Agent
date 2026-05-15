@@ -13,6 +13,7 @@ class TaskCreate(BaseModel):
     content: str
     task_type: str = "general"
     priority: str = "normal"
+    family_id: str = ""
 
 
 def get_agent():
@@ -21,21 +22,21 @@ def get_agent():
 
 
 @router.get("/tasks/my")
-async def get_my_tasks(member_name: str, status: str = "pending"):
+async def get_my_tasks(member_name: str, status: str = "pending", family_id: str = ""):
     agent = get_agent()
-    tasks = agent.task_manager.get_my_tasks(member_name, status)
+    tasks = agent.task_manager.get_my_tasks(member_name, status, family_id=family_id)
     return {"tasks": tasks}
 
 
 @router.get("/tasks/unread-count")
-async def get_unread_count(member_name: str):
+async def get_unread_count(member_name: str, family_id: str = ""):
     agent = get_agent()
-    count = agent.task_manager.get_unread_count(member_name)
+    count = agent.task_manager.get_unread_count(member_name, family_id=family_id)
     return {"count": count}
 
 
 @router.post("/tasks/{task_id}/complete")
-async def complete_task(task_id: str):
+async def complete_task(task_id: str, family_id: str = ""):
     agent = get_agent()
-    agent.task_manager.complete_task(task_id)
+    agent.task_manager.complete_task(task_id, family_id=family_id)
     return {"success": True, "message": "任务已完成"}

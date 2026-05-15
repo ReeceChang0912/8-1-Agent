@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Card, Table, Button, Form, Input, InputNumber, Select, Tag, Space, message, Statistic, Row, Col, Modal } from 'antd'
 import { PlusOutlined, ShoppingCartOutlined, CheckOutlined, EditOutlined } from '@ant-design/icons'
 import { shoppingAPI } from '../services/api'
-import axios from 'axios'
 
 const ShoppingPage: React.FC = () => {
+  const familyId = localStorage.getItem('family_id') || ''
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(false)
@@ -21,7 +21,7 @@ const ShoppingPage: React.FC = () => {
   const loadItems = async () => {
     setLoading(true)
     try {
-      const res = await shoppingAPI.getAll()
+      const res = await shoppingAPI.getAll(familyId)
       setItems(res.data.items)
     } catch (error) {
       message.error('加载购物清单失败')
@@ -32,7 +32,7 @@ const ShoppingPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const res = await shoppingAPI.getStats()
+      const res = await shoppingAPI.getStats(familyId)
       setStats(res.data)
     } catch (error) {
       console.error('加载统计失败')
@@ -41,7 +41,7 @@ const ShoppingPage: React.FC = () => {
 
   const handleAdd = async (values: any) => {
     try {
-      await shoppingAPI.add(values)
+      await shoppingAPI.add(values, familyId)
       message.success('物品添加成功')
       form.resetFields()
       loadItems()
@@ -53,7 +53,7 @@ const ShoppingPage: React.FC = () => {
 
   const handleTogglePurchased = async (item: any) => {
     try {
-      await axios.post(`/api/shopping/${item.id}/toggle`)
+      await shoppingAPI.toggle(item.id, familyId)
       message.success(item.purchased ? '已标记为待购买' : '已标记为已购买')
       loadItems()
       loadStats()
@@ -71,7 +71,7 @@ const ShoppingPage: React.FC = () => {
   const handleEditOk = async (values: any) => {
     if (!editingItem) return
     try {
-      await axios.put(`/api/shopping/${editingItem.id}`, values)
+      await shoppingAPI.update(editingItem.id, values, familyId)
       message.success('已更新')
       setEditModalVisible(false)
       setEditingItem(null)
@@ -84,7 +84,7 @@ const ShoppingPage: React.FC = () => {
 
   const handleDelete = async (name: string) => {
     try {
-      await shoppingAPI.remove(name)
+      await shoppingAPI.remove(name, familyId)
       message.success('物品已删除')
       loadItems()
       loadStats()

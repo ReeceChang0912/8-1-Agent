@@ -35,16 +35,22 @@ export const membersAPI = {
 
 // 日程管理
 export const scheduleAPI = {
-  getAll: () => api.get('/reminders'),
-  add: (date: string, event: string) => api.post('/reminders', { date, event }),
+  getAll: (familyId?: string) => api.get('/reminders', { params: { family_id: familyId } }),
+  add: (date: string, event: string, familyId?: string, member?: string) =>
+    api.post('/reminders', { date, event, family_id: familyId, member }),
+  remove: (id: number, familyId?: string) => api.delete(`/reminders/${id}`, { params: { family_id: familyId } }),
 }
 
 // 购物清单
 export const shoppingAPI = {
-  getAll: () => api.get('/shopping'),
-  add: (data: any) => api.post('/shopping', data),
-  remove: (name: string) => api.delete(`/shopping/${name}`),
-  getStats: () => api.get('/shopping/stats'),
+  getAll: (familyId?: string) => api.get('/shopping', { params: { family_id: familyId } }),
+  add: (data: any, familyId?: string) => api.post('/shopping', { ...data, family_id: familyId }),
+  update: (id: number, data: any, familyId?: string) =>
+    api.put(`/shopping/${id}`, data, { params: { family_id: familyId } }),
+  toggle: (id: number, familyId?: string) =>
+    api.post(`/shopping/${id}/toggle`, null, { params: { family_id: familyId } }),
+  remove: (name: string, familyId?: string) => api.delete(`/shopping/${name}`, { params: { family_id: familyId } }),
+  getStats: (familyId?: string) => api.get('/shopping/stats', { params: { family_id: familyId } }),
 }
 
 // 照片记忆

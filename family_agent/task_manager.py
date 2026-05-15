@@ -70,7 +70,8 @@ class TaskManager:
         content: str,
         task_type: str = "general",
         priority: str = "normal",
-        notes: str = ""
+        notes: str = "",
+        family_id: str = ""
     ) -> Optional[Dict]:
         """创建任务"""
         if not self.db:
@@ -86,7 +87,8 @@ class TaskManager:
             content=content,
             task_type=task_type,
             priority=priority,
-            status="pending"
+            status="pending",
+            family_id=family_id
         )
         
         # 创建通知给接收者
@@ -106,54 +108,59 @@ class TaskManager:
             "content": content
         }
 
-    def get_my_tasks(self, member_name: str, status: str = "pending") -> List[Dict]:
+    def get_my_tasks(self, member_name: str, status: str = "pending", family_id: str = "") -> List[Dict]:
         """获取指定成员的任务"""
         if not self.db:
             return []
-        return self.db.get_tasks(to_member=member_name, status=status)
+        return self.db.get_tasks(to_member=member_name, status=status, family_id=family_id)
 
-    def get_sent_tasks(self, member_name: str) -> List[Dict]:
+    def get_sent_tasks(self, member_name: str, family_id: str = "") -> List[Dict]:
         """获取我发出的任务"""
         if not self.db:
             return []
         with self.db.conn.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM tasks WHERE from_member = %s ORDER BY created_at DESC",
-                (member_name,)
+                "SELECT * FROM tasks WHERE family_id = %s AND from_member = %s ORDER BY created_at DESC",
+                (family_id or "", member_name)
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def complete_task(self, task_id: str) -> bool:
+    def complete_task(self, task_id: str, family_id: str = "") -> bool:
         """完成任务"""
         if self.db:
-            return self.db.update_task(task_id, status='completed', completed_at=datetime.now().isoformat())
+            return self.db.update_task(
+                task_id,
+                family_id=family_id,
+                status='completed',
+                completed_at=datetime.now().isoformat(),
+            )
         return False
 
-    def cancel_task(self, task_id: str) -> bool:
+    def cancel_task(self, task_id: str, family_id: str = "") -> bool:
         """取消任务"""
         if self.db:
-            return self.db.update_task(task_id, status='cancelled')
+            return self.db.update_task(task_id, family_id=family_id, status='cancelled')
         return False
 
-    def delete_task(self, task_id: str) -> bool:
+    def delete_task(self, task_id: str, family_id: str = "") -> bool:
         """删除任务"""
         if self.db:
-            return self.db.delete_task(task_id)
+            return self.db.delete_task(task_id, family_id=family_id)
         return False
 
-    def get_unread_count(self, member_name: str) -> int:
+    def get_unread_count(self, member_name: str, family_id: str = "") -> int:
         """获取未读任务数量"""
-        tasks = self.get_my_tasks(member_name, "pending")
+        tasks = self.get_my_tasks(member_name, "pending", family_id=family_id)
         return len(tasks)
 
-    def get_statistics(self, member_name: str = None) -> Dict:
+    def get_statistics(self, member_name: str = None, family_id: str = "") -> Dict:
         """获取任务统计"""
         if not self.db:
             return {}
         
         if member_name:
-            my_tasks = self.get_my_tasks(member_name, "all")
-            sent_tasks = self.get_sent_tasks(member_name)
+            my_tasks = self.get_my_tasks(member_name, "all", family_id=family_id)
+            sent_tasks = self.get_sent_tasks(member_name, family_id=family_id)
             
             return {
                 "received": {

@@ -22,6 +22,7 @@ interface TaskNotificationProps {
 }
 
 const TaskNotification: React.FC<TaskNotificationProps> = ({ memberName, onTaskComplete }) => {
+  const familyId = localStorage.getItem('family_id') || ''
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -36,7 +37,7 @@ const TaskNotification: React.FC<TaskNotificationProps> = ({ memberName, onTaskC
   const loadTasks = async () => {
     try {
       const res = await axios.get('/api/tasks/my', {
-        params: { member_name: memberName, status: 'pending' }
+        params: { member_name: memberName, status: 'pending', family_id: familyId }
       })
       setTasks(res.data.tasks || [])
     } catch (error) {
@@ -47,7 +48,7 @@ const TaskNotification: React.FC<TaskNotificationProps> = ({ memberName, onTaskC
   const loadUnreadCount = async () => {
     try {
       const res = await axios.get('/api/tasks/unread-count', {
-        params: { member_name: memberName }
+        params: { member_name: memberName, family_id: familyId }
       })
       setUnreadCount(res.data.count || 0)
     } catch (error) {
@@ -57,7 +58,7 @@ const TaskNotification: React.FC<TaskNotificationProps> = ({ memberName, onTaskC
 
   const handleCompleteTask = async (taskId: string) => {
     try {
-      await axios.post(`/api/tasks/${taskId}/complete`)
+      await axios.post(`/api/tasks/${taskId}/complete`, null, { params: { family_id: familyId } })
       message.success('✅ 任务已完成')
       
       // 重新加载

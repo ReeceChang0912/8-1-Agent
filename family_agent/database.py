@@ -84,6 +84,7 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS shopping_items (
                     id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     name TEXT NOT NULL,
                     quantity TEXT DEFAULT '1',
                     category TEXT DEFAULT 'general',
@@ -98,12 +99,15 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS reminders (
                     id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     date TEXT NOT NULL,
                     event TEXT NOT NULL,
                     member TEXT DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE reminders ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
 
             # 聊天历史表
             cursor.execute("""
@@ -166,6 +170,7 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id TEXT PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     from_member TEXT NOT NULL,
                     to_member TEXT NOT NULL,
                     content TEXT NOT NULL,
@@ -175,6 +180,19 @@ class DatabaseManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     completed_at TIMESTAMP
                 )
+            """)
+            cursor.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_shopping_items_family_status
+                ON shopping_items (family_id, status, created_at)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_reminders_family_date
+                ON reminders (family_id, date)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_tasks_family_member_status
+                ON tasks (family_id, to_member, status, created_at)
             """)
 
             # 照片索引表
@@ -329,53 +347,62 @@ class DatabaseManager:
 
     def add_shopping_item(self, name: str, quantity: str = '1', category: str = 'general',
                           priority: str = 'normal', added_by: str = '',
-                          status: str = 'pending'):
+                          status: str = 'pending', family_id: str = ''):
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO shopping_items (name, quantity, category, priority, added_by, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (name, quantity, category, priority, added_by, status))
+                INSERT INTO shopping_items (family_id, name, quantity, category, priority, added_by, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (family_id or "", name, quantity, category, priority, added_by, status))
 
-    def get_all_shopping_items(self, status: str = None) -> List[Dict]:
+    def get_all_shopping_items(self, status: str = None, family_id: str = '') -> List[Dict]:
         with self.conn.cursor() as cursor:
             if status:
-                cursor.execute('SELECT * FROM shopping_items WHERE status = %s ORDER BY created_at', (status,))
+                cursor.execute(
+                    'SELECT * FROM shopping_items WHERE family_id = %s AND status = %s ORDER BY created_at',
+                    (family_id or "", status)
+                )
             else:
-                cursor.execute('SELECT * FROM shopping_items ORDER BY created_at')
+                cursor.execute(
+                    'SELECT * FROM shopping_items WHERE family_id = %s ORDER BY created_at',
+                    (family_id or "",)
+                )
             return [dict(row) for row in cursor.fetchall()]
 
-    def update_shopping_item(self, item_id: int, **kwargs):
+    def update_shopping_item(self, item_id: int, family_id: str = '', **kwargs):
         if not kwargs:
             return False
         set_clause = ', '.join([f"{k} = %s" for k in kwargs])
-        values = list(kwargs.values()) + [item_id]
+        values = list(kwargs.values()) + [item_id, family_id or ""]
         with self.conn.cursor() as cursor:
-            cursor.execute(f"UPDATE shopping_items SET {set_clause} WHERE id = %s", values)
+            cursor.execute(f"UPDATE shopping_items SET {set_clause} WHERE id = %s AND family_id = %s", values)
             return cursor.rowcount > 0
 
-    def remove_shopping_item(self, item_id: int):
+    def remove_shopping_item(self, item_id: int, family_id: str = ''):
         with self.conn.cursor() as cursor:
-            cursor.execute('DELETE FROM shopping_items WHERE id = %s', (item_id,))
+            cursor.execute('DELETE FROM shopping_items WHERE id = %s AND family_id = %s', (item_id, family_id or ""))
             return cursor.rowcount > 0
 
-    def add_reminder(self, date: str, event: str, member: str = ''):
+    def add_reminder(self, date: str, event: str, member: str = '', family_id: str = ''):
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO reminders (date, event, member)
-                VALUES (%s, %s, %s)
-            """, (date, event, member))
+                INSERT INTO reminders (family_id, date, event, member)
+                VALUES (%s, %s, %s, %s)
+            """, (family_id or "", date, event, member))
 
-    def get_all_reminders(self, member: str = None) -> List[Dict]:
+    def get_all_reminders(self, member: str = None, family_id: str = '') -> List[Dict]:
         with self.conn.cursor() as cursor:
             if member:
-                cursor.execute('SELECT * FROM reminders WHERE member = %s ORDER BY date', (member,))
+                cursor.execute(
+                    'SELECT * FROM reminders WHERE family_id = %s AND member = %s ORDER BY date',
+                    (family_id or "", member)
+                )
             else:
-                cursor.execute('SELECT * FROM reminders ORDER BY date')
+                cursor.execute('SELECT * FROM reminders WHERE family_id = %s ORDER BY date', (family_id or "",))
             return [dict(row) for row in cursor.fetchall()]
 
-    def remove_reminder(self, reminder_id: int):
+    def remove_reminder(self, reminder_id: int, family_id: str = ''):
         with self.conn.cursor() as cursor:
-            cursor.execute('DELETE FROM reminders WHERE id = %s', (reminder_id,))
+            cursor.execute('DELETE FROM reminders WHERE id = %s AND family_id = %s', (reminder_id, family_id or ""))
             return cursor.rowcount > 0
 
     def create_chat_session(self, user_id: str, title: str = None, family_id: str = "") -> Dict:
@@ -515,39 +542,39 @@ class DatabaseManager:
 
     def add_task(self, task_id: str, from_member: str, to_member: str, content: str,
                  task_type: str = 'general', priority: str = 'normal',
-                 status: str = 'pending'):
+                 status: str = 'pending', family_id: str = ''):
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO tasks (id, from_member, to_member, content, task_type, priority, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (task_id, from_member, to_member, content, task_type, priority, status))
+                INSERT INTO tasks (id, family_id, from_member, to_member, content, task_type, priority, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (task_id, family_id or "", from_member, to_member, content, task_type, priority, status))
 
-    def get_tasks(self, to_member: str = None, status: str = None) -> List[Dict]:
+    def get_tasks(self, to_member: str = None, status: str = None, family_id: str = '') -> List[Dict]:
         with self.conn.cursor() as cursor:
-            query = 'SELECT * FROM tasks WHERE 1=1'
-            params = []
+            query = 'SELECT * FROM tasks WHERE family_id = %s'
+            params = [family_id or ""]
             if to_member:
                 query += ' AND to_member = %s'
                 params.append(to_member)
-            if status:
+            if status and status != 'all':
                 query += ' AND status = %s'
                 params.append(status)
             query += ' ORDER BY created_at DESC'
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def update_task(self, task_id: str, **kwargs):
+    def update_task(self, task_id: str, family_id: str = '', **kwargs):
         if not kwargs:
             return False
         set_clause = ', '.join([f"{k} = %s" for k in kwargs])
-        values = list(kwargs.values()) + [task_id]
+        values = list(kwargs.values()) + [task_id, family_id or ""]
         with self.conn.cursor() as cursor:
-            cursor.execute(f"UPDATE tasks SET {set_clause} WHERE id = %s", values)
+            cursor.execute(f"UPDATE tasks SET {set_clause} WHERE id = %s AND family_id = %s", values)
             return cursor.rowcount > 0
 
-    def delete_task(self, task_id: str):
+    def delete_task(self, task_id: str, family_id: str = ''):
         with self.conn.cursor() as cursor:
-            cursor.execute('DELETE FROM tasks WHERE id = %s', (task_id,))
+            cursor.execute('DELETE FROM tasks WHERE id = %s AND family_id = %s', (task_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_photo(self, photo_id: str, filename: str, upload_date: str, **kwargs):

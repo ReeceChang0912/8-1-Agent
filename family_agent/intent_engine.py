@@ -116,7 +116,7 @@ class TaskExecutor:
         self.agent = agent_core
         self.intent_recognizer = IntentRecognizer()
     
-    def execute(self, message: str, user_id: str = None) -> Optional[str]:
+    def execute(self, message: str, user_id: str = None, family_id: str = None) -> Optional[str]:
         """
         执行任务
         
@@ -132,10 +132,10 @@ class TaskExecutor:
         
         # 2. 根据意图执行相应操作
         if intent == 'create_reminder':
-            return self._handle_create_reminder(message, intent_result)
+            return self._handle_create_reminder(message, intent_result, family_id=family_id)
         
         elif intent == 'add_shopping_item':
-            return self._handle_add_shopping_item(message, intent_result)
+            return self._handle_add_shopping_item(message, intent_result, family_id=family_id)
         
         elif intent == 'search_knowledge':
             return self._handle_search_knowledge(message, intent_result)
@@ -147,7 +147,7 @@ class TaskExecutor:
             return self._handle_upload_photo(message, intent_result)
         
         elif intent == 'assign_task':
-            return self._handle_assign_task(message, intent_result)
+            return self._handle_assign_task(message, intent_result, user_id=user_id, family_id=family_id)
 
         elif intent == 'add_knowledge':
             return self._handle_add_knowledge(message, intent_result)
@@ -155,7 +155,7 @@ class TaskExecutor:
         # 其他意图交给正常对话流程
         return None
     
-    def _handle_create_reminder(self, message: str, intent: Dict) -> str:
+    def _handle_create_reminder(self, message: str, intent: Dict, family_id: str = None) -> str:
         """处理创建提醒"""
 
         # 提取时间
@@ -175,13 +175,13 @@ class TaskExecutor:
         event_clean = event_clean.strip().strip('，,。.!！?？')
 
         if event_clean:
-            self.agent.add_reminder(date_str, event_clean)
+            self.agent.add_reminder(date_str, event_clean, family_id=family_id)
 
             return f"✅ 已添加到日程安排:\n📅 时间: {date_str}\n📝 事件: {event_clean}\n\n你可以随时查看和管理日程!"
 
         return "抱歉,我没有理解清楚。请告诉我具体要做什么事?"
     
-    def _handle_add_shopping_item(self, message: str, intent: Dict) -> str:
+    def _handle_add_shopping_item(self, message: str, intent: Dict, family_id: str = None) -> str:
         """处理添加购物项"""
         
         # 提取物品名称
@@ -197,7 +197,8 @@ class TaskExecutor:
                 name=item_name,
                 quantity="1",
                 category="general",
-                priority="normal"
+                priority="normal",
+                family_id=family_id or ""
             )
             
             return f"✅ 已添加到购物清单:\n🛒 物品: {item_name}\n\n你可以在购物清单页面查看和管理!"
@@ -258,7 +259,7 @@ class TaskExecutor:
         """处理照片上传提示"""
         return "📸 请在聊天框中点击上传按钮选择照片,我会自动分析并保存到照片记忆中!"
     
-    def _handle_assign_task(self, message: str, intent: Dict) -> str:
+    def _handle_assign_task(self, message: str, intent: Dict, user_id: str = None, family_id: str = None) -> str:
         """处理分配任务"""
         
         # 提取目标成员和任务内容
@@ -283,11 +284,12 @@ class TaskExecutor:
                     
                     # 创建家庭任务
                     self.agent.task_manager.create_task(
-                        from_member="当前用户",  # TODO: 从 user_id 获取
+                        from_member=user_id or "当前用户",
                         to_member=to_member,
                         content=f"买{item_name}",
                         task_type="shopping",
-                        priority="normal"
+                        priority="normal",
+                        family_id=family_id or ""
                     )
                     
                     # 同时也添加到购物清单
@@ -296,7 +298,8 @@ class TaskExecutor:
                         quantity="1",
                         category="general",
                         priority="normal",
-                        notes=f"由 {to_member} 购买"
+                        notes=f"由 {to_member} 购买",
+                        family_id=family_id or ""
                     )
                     
                     return (f"✅ 已创建任务并通知 {to_member}:\n"
@@ -306,11 +309,12 @@ class TaskExecutor:
                 else:
                     # 一般任务
                     self.agent.task_manager.create_task(
-                        from_member="当前用户",
+                        from_member=user_id or "当前用户",
                         to_member=to_member,
                         content=task_content,
                         task_type="general",
-                        priority="normal"
+                        priority="normal",
+                        family_id=family_id or ""
                     )
                     
                     return (f"✅ 已给 {to_member} 分配任务:\n"

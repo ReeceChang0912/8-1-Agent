@@ -5,6 +5,8 @@ import { scheduleAPI } from '../services/api'
 import dayjs from 'dayjs'
 
 const SchedulePage: React.FC = () => {
+  const familyId = localStorage.getItem('family_id') || ''
+  const memberName = localStorage.getItem('member_name') || ''
   const [reminders, setReminders] = useState([])
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
@@ -16,7 +18,7 @@ const SchedulePage: React.FC = () => {
   const loadReminders = async () => {
     setLoading(true)
     try {
-      const res = await scheduleAPI.getAll()
+      const res = await scheduleAPI.getAll(familyId)
       setReminders(res.data.reminders)
     } catch (error) {
       message.error('加载日程失败')
@@ -28,7 +30,7 @@ const SchedulePage: React.FC = () => {
   const handleAdd = async (values: any) => {
     try {
       const dateStr = values.date.format('YYYY-MM-DD')
-      await scheduleAPI.add(dateStr, values.event)
+      await scheduleAPI.add(dateStr, values.event, familyId, memberName)
       message.success('提醒添加成功')
       form.resetFields()
       loadReminders()

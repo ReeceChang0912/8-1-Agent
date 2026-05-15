@@ -12,6 +12,7 @@ class ShoppingItemCreate(BaseModel):
     quantity: str = "1"
     category: str = "general"
     priority: str = "normal"
+    family_id: str = ""
 
 
 def get_agent():
@@ -20,9 +21,9 @@ def get_agent():
 
 
 @router.get("/shopping")
-async def get_shopping_list():
+async def get_shopping_list(family_id: str = ""):
     agent = get_agent()
-    items = agent.shopping_list.get_items()
+    items = agent.shopping_list.get_items(family_id=family_id)
     # 添加 purchased 布尔字段（前端兼容）
     for item in items:
         item['purchased'] = item.get('status') == 'purchased'
@@ -36,40 +37,41 @@ async def add_shopping_item(item_data: ShoppingItemCreate):
         name=item_data.name,
         quantity=item_data.quantity,
         category=item_data.category,
-        priority=item_data.priority
+        priority=item_data.priority,
+        family_id=getattr(item_data, "family_id", "")
     )
     return {"success": True, "message": f"已添加: {item_data.name}"}
 
 
 @router.put("/shopping/{item_id}")
-async def update_shopping_item(item_id: int, item_data: ShoppingItemCreate):
+async def update_shopping_item(item_id: int, item_data: ShoppingItemCreate, family_id: str = ""):
     agent = get_agent()
-    agent.shopping_list.update_item(item_id, **item_data.model_dump())
+    agent.shopping_list.update_item(item_id, family_id=family_id, **item_data.model_dump(exclude={"family_id"}))
     return {"success": True, "message": f"已更新: {item_data.name}"}
 
 
 @router.post("/shopping/{item_id}/toggle")
-async def toggle_shopping_item(item_id: int):
+async def toggle_shopping_item(item_id: int, family_id: str = ""):
     agent = get_agent()
-    agent.shopping_list.toggle_purchased(item_id)
+    agent.shopping_list.toggle_purchased(item_id, family_id=family_id)
     return {"success": True}
 
 
 @router.delete("/shopping/{item_name}")
-async def remove_shopping_item(item_name: str):
+async def remove_shopping_item(item_name: str, family_id: str = ""):
     agent = get_agent()
-    items = agent.shopping_list.get_items()
+    items = agent.shopping_list.get_items(family_id=family_id)
     for item in items:
         if item.get('name') == item_name:
-            agent.shopping_list.remove_item(item['id'])
+            agent.shopping_list.remove_item(item['id'], family_id=family_id)
             return {"success": True, "message": f"已删除: {item_name}"}
     return {"success": False, "message": f"未找到: {item_name}"}
 
 
 @router.get("/shopping/stats")
-async def get_shopping_stats():
+async def get_shopping_stats(family_id: str = ""):
     agent = get_agent()
-    stats = agent.shopping_list.get_shopping_summary()
+    stats = agent.shopping_list.get_shopping_summary(family_id=family_id)
     return stats
 
 

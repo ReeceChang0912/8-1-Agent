@@ -187,7 +187,7 @@ class FamilyAgentCore:
             if is_confirm:
                 # 用户确认，执行操作
                 logger.info(f"[确认流程] 用户确认，开始执行")
-                result = self._execute_pending_action(pending, user_id)
+                result = self._execute_pending_action(pending, user_id, family_id=family_id)
                 del self._pending_confirmations[confirmation_key]
                 logger.info(f"[确认流程] 执行完成")
                 return result
@@ -299,7 +299,7 @@ class FamilyAgentCore:
                     "  `/shopping 牛奶和鸡蛋`\n"
                     "  `/shopping 一袋大米`"
                 )
-            return self.task_executor._handle_add_shopping_item(f"买{args}", {})
+            return self.task_executor._handle_add_shopping_item(f"买{args}", {}, family_id=None)
         elif cmd == '/remind':
             if not args:
                 return (
@@ -307,7 +307,7 @@ class FamilyAgentCore:
                     "  `/remind 明天下午3点开会`\n"
                     "  `/remind 周五买菜`"
                 )
-            return self.task_executor._handle_create_reminder(f"提醒我{args}", {})
+            return self.task_executor._handle_create_reminder(f"提醒我{args}", {}, family_id=None)
         elif cmd == '/knowledge':
             if not args:
                 return (
@@ -344,12 +344,12 @@ class FamilyAgentCore:
         }
         return prompts.get(intent, f"我检测到你想执行操作，请确认是否执行？(是/否)")
 
-    def _execute_pending_action(self, pending: dict, user_id: str = None) -> str:
+    def _execute_pending_action(self, pending: dict, user_id: str = None, family_id: str = None) -> str:
         """执行待确认的操作"""
         intent = pending['intent']
         message = pending['message']
         # 使用 task_executor 执行
-        return self.task_executor.execute(message, user_id)
+        return self.task_executor.execute(message, user_id, family_id=family_id)
     
     def get_last_emotion(self) -> Optional[str]:
         """获取最后一次检测到的情绪"""
@@ -417,7 +417,7 @@ class FamilyAgentCore:
                 member.permission = perm_map.get(kwargs['permission'], PermissionLevel.MEMBER)
             self.role_manager.update_member(name, **kwargs)
     
-    def add_reminder(self, date: str, event: str, members: List[str] = None):
+    def add_reminder(self, date: str, event: str, members: List[str] = None, family_id: str = None):
         """添加提醒"""
         reminder = {
             "date": date,
@@ -429,7 +429,7 @@ class FamilyAgentCore:
         # 持久化到数据库
         if self.db:
             try:
-                self.db.add_reminder(date, event)
+                self.db.add_reminder(date, event, family_id=family_id or "")
             except Exception as e:
                 logger.warning(f"保存日程到数据库失败: {e}")
     
