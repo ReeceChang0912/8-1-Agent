@@ -7,18 +7,18 @@ const api = axios.create({
 
 // 聊天相关
 export const chatAPI = {
-  sendMessage: (message: string, userId?: string, sessionId?: string) =>
-    api.post('/chat', { message, user_id: userId, session_id: sessionId }),
-  listSessions: (userId: string, limit: number = 50) =>
-    api.get(`/chat/sessions/${userId}`, { params: { limit } }),
-  createSession: (userId: string, title?: string) =>
-    api.post('/chat/sessions', { user_id: userId, title }),
-  updateSession: (userId: string, sessionId: string, title: string) =>
-    api.put(`/chat/sessions/${userId}/${sessionId}`, { title }),
-  archiveSession: (userId: string, sessionId: string) =>
-    api.delete(`/chat/sessions/${userId}/${sessionId}`),
-  getHistory: (userId: string, sessionId: string, limit: number = 100) =>
-    api.get(`/chat/history/${userId}`, { params: { session_id: sessionId, limit } }),
+  sendMessage: (message: string, userId?: string, sessionId?: string, familyId?: string) =>
+    api.post('/chat', { message, user_id: userId, session_id: sessionId, family_id: familyId }),
+  listSessions: (userId: string, limit: number = 50, familyId?: string) =>
+    api.get(`/chat/sessions/${userId}`, { params: { limit, family_id: familyId } }),
+  createSession: (userId: string, title?: string, familyId?: string) =>
+    api.post('/chat/sessions', { user_id: userId, title, family_id: familyId }),
+  updateSession: (userId: string, sessionId: string, title: string, familyId?: string) =>
+    api.put(`/chat/sessions/${userId}/${sessionId}`, { title }, { params: { family_id: familyId } }),
+  archiveSession: (userId: string, sessionId: string, familyId?: string) =>
+    api.delete(`/chat/sessions/${userId}/${sessionId}`, { params: { family_id: familyId } }),
+  getHistory: (userId: string, sessionId: string, limit: number = 100, familyId?: string) =>
+    api.get(`/chat/history/${userId}`, { params: { session_id: sessionId, limit, family_id: familyId } }),
 }
 
 // 成员管理

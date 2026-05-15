@@ -17,42 +17,42 @@ class ChatHistoryManager:
         """
         self.db = db_manager
 
-    def create_session(self, user_id: str, title: str = None) -> Dict:
+    def create_session(self, user_id: str, title: str = None, family_id: str = "") -> Dict:
         if self.db:
-            return self.db.create_chat_session(user_id, title)
-        return {"session_id": "", "user_id": user_id, "title": title or "新对话"}
+            return self.db.create_chat_session(user_id, title, family_id=family_id)
+        return {"session_id": "", "family_id": family_id, "user_id": user_id, "title": title or "新对话"}
 
-    def list_sessions(self, user_id: str, limit: int = 50) -> List[Dict]:
+    def list_sessions(self, user_id: str, limit: int = 50, family_id: str = "") -> List[Dict]:
         if self.db:
-            return self.db.list_chat_sessions(user_id, limit)
+            return self.db.list_chat_sessions(user_id, limit, family_id=family_id)
         return []
 
-    def update_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+    def update_session_title(self, user_id: str, session_id: str, title: str, family_id: str = "") -> bool:
         if self.db:
-            return self.db.update_chat_session_title(user_id, session_id, title)
+            return self.db.update_chat_session_title(user_id, session_id, title, family_id=family_id)
         return False
 
-    def archive_session(self, user_id: str, session_id: str) -> bool:
+    def archive_session(self, user_id: str, session_id: str, family_id: str = "") -> bool:
         if self.db:
-            return self.db.archive_chat_session(user_id, session_id)
+            return self.db.archive_chat_session(user_id, session_id, family_id=family_id)
         return False
 
     def add_message(self, user_id: str, role: str, content: str, emotion: str = None,
-                    session_id: str = None):
+                    session_id: str = None, family_id: str = ""):
         """添加消息"""
         if self.db:
-            self.db.add_chat_message(user_id, role, content, emotion, session_id=session_id)
+            self.db.add_chat_message(user_id, role, content, emotion, session_id=session_id, family_id=family_id)
 
-    def get_history(self, user_id: str, limit: int = 50, session_id: str = None) -> List[Dict]:
+    def get_history(self, user_id: str, limit: int = 50, session_id: str = None, family_id: str = "") -> List[Dict]:
         """获取用户聊天历史"""
         if self.db:
-            return self.db.get_chat_history(user_id, limit, session_id=session_id)
+            return self.db.get_chat_history(user_id, limit, session_id=session_id, family_id=family_id)
         return []
 
-    def clear_history(self, user_id: str, session_id: str = None):
+    def clear_history(self, user_id: str, session_id: str = None, family_id: str = ""):
         """清空用户聊天历史"""
         if self.db:
-            self.db.clear_chat_history(user_id, session_id=session_id)
+            self.db.clear_chat_history(user_id, session_id=session_id, family_id=family_id)
 
     def search_history(self, user_id: str, keyword: str) -> List[Dict]:
         """搜索聊天历史"""

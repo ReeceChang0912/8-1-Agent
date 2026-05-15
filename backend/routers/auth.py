@@ -40,7 +40,7 @@ async def login(request: LoginRequest):
         return {"success": False, "message": "❌ 家庭号不存在"}
     if request.member_name not in family.get('members', []):
         return {"success": False, "message": "❌ 该成员不在家庭中"}
-    result = auth.login(request.member_name)
+    result = auth.login(request.member_name, family_id=request.family_id)
     if result:
         return {
             "success": True,
@@ -60,8 +60,8 @@ async def create_family(request: CreateFamilyRequest):
     result = auth.create_family(request.family_name, request.admin_name)
     if not result.get('success', True):
         return result
-    login_result = auth.login(request.admin_name)
     family_id = result['family_id']
+    login_result = auth.login(request.admin_name, family_id=family_id)
     family = auth.get_family_info(family_id)
     return {
         "success": True,
@@ -84,7 +84,7 @@ async def join_family(request: JoinFamilyRequest):
     result = auth.db.add_family_member(request.family_id, request.member_name) if auth.db else False
     if not result:
         return {"success": False, "message": "❌ 添加成员失败"}
-    login_result = auth.login(request.member_name)
+    login_result = auth.login(request.member_name, family_id=request.family_id)
     return {
         "success": True,
         "session_id": login_result['session_id'] if login_result else None,

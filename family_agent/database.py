@@ -109,6 +109,7 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chat_sessions (
                     session_id TEXT PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     user_id TEXT NOT NULL,
                     title TEXT DEFAULT '新对话',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -120,6 +121,7 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chat_history (
                     id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     user_id TEXT NOT NULL,
                     session_id TEXT,
                     role TEXT NOT NULL,
@@ -129,6 +131,8 @@ class DatabaseManager:
                 )
             """)
             cursor.execute("ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS session_id TEXT")
+            cursor.execute("ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
             cursor.execute("""
                 SELECT user_id, MAX(timestamp) AS updated_at
                 FROM chat_history
@@ -151,11 +155,11 @@ class DatabaseManager:
                 """, (session_id, user_id))
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chat_history_user_session
-                ON chat_history (user_id, session_id, timestamp)
+                ON chat_history (family_id, user_id, session_id, timestamp)
             """)
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_updated
-                ON chat_sessions (user_id, updated_at DESC)
+                ON chat_sessions (family_id, user_id, updated_at DESC)
             """)
 
             # 任务表
@@ -258,12 +262,14 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     session_id TEXT PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     member_name TEXT NOT NULL,
                     login_time TEXT,
                     expires_at TEXT,
                     is_active BOOLEAN DEFAULT TRUE
                 )
             """)
+            cursor.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
 
             # 财务交易表
             cursor.execute("""
@@ -372,41 +378,44 @@ class DatabaseManager:
             cursor.execute('DELETE FROM reminders WHERE id = %s', (reminder_id,))
             return cursor.rowcount > 0
 
-    def create_chat_session(self, user_id: str, title: str = None) -> Dict:
+    def create_chat_session(self, user_id: str, title: str = None, family_id: str = "") -> Dict:
         session_id = uuid.uuid4().hex
         session_title = title or "新对话"
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO chat_sessions (session_id, user_id, title)
-                VALUES (%s, %s, %s)
-            """, (session_id, user_id, session_title))
+                INSERT INTO chat_sessions (session_id, family_id, user_id, title)
+                VALUES (%s, %s, %s, %s)
+            """, (session_id, family_id or "", user_id, session_title))
         return {
             "session_id": session_id,
+            "family_id": family_id or "",
             "user_id": user_id,
             "title": session_title,
         }
 
-    def ensure_chat_session(self, user_id: str, session_id: str = None, title: str = None) -> Dict:
+    def ensure_chat_session(self, user_id: str, session_id: str = None, title: str = None,
+                            family_id: str = "") -> Dict:
         if session_id:
-            existing = self.get_chat_session(user_id, session_id)
+            existing = self.get_chat_session(user_id, session_id, family_id=family_id)
             if existing:
                 return existing
-        return self.create_chat_session(user_id, title)
+        return self.create_chat_session(user_id, title, family_id=family_id)
 
-    def get_chat_session(self, user_id: str, session_id: str) -> Optional[Dict]:
+    def get_chat_session(self, user_id: str, session_id: str, family_id: str = "") -> Optional[Dict]:
         with self.conn.cursor() as cursor:
             cursor.execute("""
                 SELECT * FROM chat_sessions
-                WHERE user_id = %s AND session_id = %s AND archived = FALSE
-            """, (user_id, session_id))
+                WHERE user_id = %s AND session_id = %s AND family_id = %s AND archived = FALSE
+            """, (user_id, session_id, family_id or ""))
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def list_chat_sessions(self, user_id: str, limit: int = 50) -> List[Dict]:
+    def list_chat_sessions(self, user_id: str, limit: int = 50, family_id: str = "") -> List[Dict]:
         with self.conn.cursor() as cursor:
             cursor.execute("""
                 SELECT
                     s.session_id,
+                    s.family_id,
                     s.user_id,
                     s.title,
                     s.created_at,
@@ -415,47 +424,50 @@ class DatabaseManager:
                     (
                         SELECT h2.content
                         FROM chat_history h2
-                        WHERE h2.session_id = s.session_id
+                        WHERE h2.session_id = s.session_id AND h2.family_id = s.family_id
                         ORDER BY h2.timestamp DESC, h2.id DESC
                         LIMIT 1
                     ) AS last_message
                 FROM chat_sessions s
-                LEFT JOIN chat_history h ON h.session_id = s.session_id
-                WHERE s.user_id = %s AND s.archived = FALSE
-                GROUP BY s.session_id, s.user_id, s.title, s.created_at, s.updated_at
+                LEFT JOIN chat_history h
+                    ON h.session_id = s.session_id
+                    AND h.family_id = s.family_id
+                    AND h.user_id = s.user_id
+                WHERE s.user_id = %s AND s.family_id = %s AND s.archived = FALSE
+                GROUP BY s.session_id, s.family_id, s.user_id, s.title, s.created_at, s.updated_at
                 ORDER BY s.updated_at DESC
                 LIMIT %s
-            """, (user_id, limit))
+            """, (user_id, family_id or "", limit))
             return [dict(row) for row in cursor.fetchall()]
 
-    def update_chat_session_title(self, user_id: str, session_id: str, title: str) -> bool:
+    def update_chat_session_title(self, user_id: str, session_id: str, title: str, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute("""
                 UPDATE chat_sessions
                 SET title = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s AND session_id = %s
-            """, (title[:80] or "新对话", user_id, session_id))
+                WHERE user_id = %s AND session_id = %s AND family_id = %s
+            """, (title[:80] or "新对话", user_id, session_id, family_id or ""))
             return cursor.rowcount > 0
 
-    def archive_chat_session(self, user_id: str, session_id: str) -> bool:
+    def archive_chat_session(self, user_id: str, session_id: str, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute("""
                 UPDATE chat_sessions
                 SET archived = TRUE, updated_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s AND session_id = %s
-            """, (user_id, session_id))
+                WHERE user_id = %s AND session_id = %s AND family_id = %s
+            """, (user_id, session_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_chat_message(self, user_id: str, role: str, content: str, emotion: str = None,
-                         session_id: str = None):
+                         session_id: str = None, family_id: str = ""):
         if session_id:
-            session = self.ensure_chat_session(user_id, session_id)
+            session = self.ensure_chat_session(user_id, session_id, family_id=family_id)
             session_id = session["session_id"]
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO chat_history (user_id, session_id, role, content, emotion)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (user_id, session_id, role, content, emotion))
+                INSERT INTO chat_history (family_id, user_id, session_id, role, content, emotion)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (family_id or "", user_id, session_id, role, content, emotion))
             if session_id:
                 cursor.execute("""
                     UPDATE chat_sessions
@@ -465,36 +477,37 @@ class DatabaseManager:
                             THEN %s
                             ELSE title
                         END
-                    WHERE session_id = %s AND user_id = %s
-                """, (role, self._derive_chat_title(content), session_id, user_id))
+                    WHERE session_id = %s AND user_id = %s AND family_id = %s
+                """, (role, self._derive_chat_title(content), session_id, user_id, family_id or ""))
 
-    def get_chat_history(self, user_id: str, limit: int = 50, session_id: str = None) -> List[Dict]:
+    def get_chat_history(self, user_id: str, limit: int = 50, session_id: str = None,
+                         family_id: str = "") -> List[Dict]:
         with self.conn.cursor() as cursor:
             if session_id:
                 cursor.execute("""
                     SELECT * FROM chat_history
-                    WHERE user_id = %s AND session_id = %s
+                    WHERE user_id = %s AND session_id = %s AND family_id = %s
                     ORDER BY timestamp ASC, id ASC
                     LIMIT %s
-                """, (user_id, session_id, limit))
+                """, (user_id, session_id, family_id or "", limit))
             else:
                 cursor.execute("""
                     SELECT * FROM chat_history
-                    WHERE user_id = %s
+                    WHERE user_id = %s AND family_id = %s
                     ORDER BY timestamp ASC, id ASC
                     LIMIT %s
-                """, (user_id, limit))
+                """, (user_id, family_id or "", limit))
             return [dict(row) for row in cursor.fetchall()]
 
-    def clear_chat_history(self, user_id: str, session_id: str = None):
+    def clear_chat_history(self, user_id: str, session_id: str = None, family_id: str = ""):
         with self.conn.cursor() as cursor:
             if session_id:
                 cursor.execute(
-                    'DELETE FROM chat_history WHERE user_id = %s AND session_id = %s',
-                    (user_id, session_id)
+                    'DELETE FROM chat_history WHERE user_id = %s AND session_id = %s AND family_id = %s',
+                    (user_id, session_id, family_id or "")
                 )
             else:
-                cursor.execute('DELETE FROM chat_history WHERE user_id = %s', (user_id,))
+                cursor.execute('DELETE FROM chat_history WHERE user_id = %s AND family_id = %s', (user_id, family_id or ""))
 
     def _derive_chat_title(self, content: str) -> str:
         text = " ".join((content or "").split())
@@ -828,23 +841,25 @@ class DatabaseManager:
             return True
         return False
 
-    def create_session(self, session_id: str, member_name: str, expires_at: str = None):
+    def create_session(self, session_id: str, member_name: str, expires_at: str = None, family_id: str = ""):
         if not expires_at:
             expires_at = (datetime.now() + timedelta(hours=24)).isoformat()
         with self.conn.cursor() as cursor:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
                     session_id TEXT PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
                     member_name TEXT NOT NULL,
                     login_time TEXT,
                     expires_at TEXT,
                     is_active BOOLEAN DEFAULT TRUE
                 )
             """)
+            cursor.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
             cursor.execute("""
-                INSERT INTO sessions (session_id, member_name, login_time, expires_at)
-                VALUES (%s, %s, %s, %s)
-            """, (session_id, member_name, datetime.now().isoformat(), expires_at))
+                INSERT INTO sessions (session_id, family_id, member_name, login_time, expires_at)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (session_id, family_id or "", member_name, datetime.now().isoformat(), expires_at))
 
     def get_session(self, session_id: str) -> Optional[Dict]:
         with self.conn.cursor() as cursor:

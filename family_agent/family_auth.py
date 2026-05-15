@@ -128,7 +128,7 @@ class FamilyAuthManager:
         """获取家庭信息"""
         return self.db.get_family(family_id) if self.db else None
     
-    def login(self, member_name: str) -> Optional[Dict]:
+    def login(self, member_name: str, family_id: str = "") -> Optional[Dict]:
         """用户登录"""
         if not self.db:
             return None
@@ -137,10 +137,11 @@ class FamilyAuthManager:
         session_id = secrets.token_urlsafe(32)
         expires_at = (datetime.now() + timedelta(hours=24)).isoformat()
         
-        self.db.create_session(session_id, member_name, expires_at)
+        self.db.create_session(session_id, member_name, expires_at, family_id=family_id)
         
         return {
             "session_id": session_id,
+            "family_id": family_id,
             "member_name": member_name,
             "login_time": datetime.now().isoformat(),
             "expires_at": expires_at

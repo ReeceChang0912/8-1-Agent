@@ -35,6 +35,7 @@ interface ChatSession {
 
 const ChatPage: React.FC = () => {
   const userId = localStorage.getItem('member_name') || 'anonymous'
+  const familyId = localStorage.getItem('family_id') || ''
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [sessionsLoading, setSessionsLoading] = useState(false)
@@ -105,7 +106,7 @@ const ChatPage: React.FC = () => {
   const loadSessions = async () => {
     setSessionsLoading(true)
     try {
-      const res = await chatAPI.listSessions(userId)
+      const res = await chatAPI.listSessions(userId, 50, familyId)
       const list = res.data.sessions || []
       setSessions(list)
       if (!activeSessionRef.current && list.length > 0) {
@@ -122,7 +123,7 @@ const ChatPage: React.FC = () => {
 
   const loadSessionHistory = async (sessionId: string) => {
     try {
-      const res = await chatAPI.getHistory(userId, sessionId, 200)
+      const res = await chatAPI.getHistory(userId, sessionId, 200, familyId)
       const history = (res.data.history || []).map((item: any) => ({
         role: item.role,
         content: item.content,
@@ -139,7 +140,7 @@ const ChatPage: React.FC = () => {
 
   const handleNewSession = async () => {
     try {
-      const res = await chatAPI.createSession(userId, '新对话')
+      const res = await chatAPI.createSession(userId, '新对话', familyId)
       const session = res.data.session
       setSessions(prev => [session, ...prev])
       setActiveSessionId(session.session_id)
@@ -170,7 +171,7 @@ const ChatPage: React.FC = () => {
     if (!renamingSession) return
     const title = renameTitle.trim() || '新对话'
     try {
-      await chatAPI.updateSession(userId, renamingSession.session_id, title)
+      await chatAPI.updateSession(userId, renamingSession.session_id, title, familyId)
       setSessions(prev => prev.map(item =>
         item.session_id === renamingSession.session_id ? { ...item, title } : item
       ))
@@ -190,7 +191,7 @@ const ChatPage: React.FC = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await chatAPI.archiveSession(userId, session.session_id)
+          await chatAPI.archiveSession(userId, session.session_id, familyId)
           setSessions(prev => prev.filter(item => item.session_id !== session.session_id))
           if (activeSessionId === session.session_id) {
             const nextSession = sessions.find(item => item.session_id !== session.session_id)
@@ -325,7 +326,7 @@ const ChatPage: React.FC = () => {
     let sessionId = activeSessionId
     if (!sessionId) {
       try {
-        const res = await chatAPI.createSession(userId, inputValue.trim().slice(0, 28) || '新对话')
+        const res = await chatAPI.createSession(userId, inputValue.trim().slice(0, 28) || '新对话', familyId)
         const session = res.data.session
         sessionId = session.session_id
         setSessions(prev => [session, ...prev])
@@ -388,11 +389,11 @@ const ChatPage: React.FC = () => {
 
     // 使用WebSocket发送消息
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ message: messageContent, session_id: sessionId }))
+      wsRef.current.send(JSON.stringify({ message: messageContent, session_id: sessionId, family_id: familyId }))
     } else {
       // 降级到HTTP模式
       try {
-        const response = await chatAPI.sendMessage(messageContent, userId, sessionId)
+        const response = await chatAPI.sendMessage(messageContent, userId, sessionId, familyId)
         const respText = response.data.response
         const assistantMessage: Message = {
           role: 'assistant',
@@ -478,10 +479,10 @@ const ChatPage: React.FC = () => {
     setMessages(prev => [...prev, userMessage])
     setLoading(true)
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ message: text, session_id: activeSessionId }))
+      wsRef.current.send(JSON.stringify({ message: text, session_id: activeSessionId, family_id: familyId }))
     } else {
       try {
-        const response = await chatAPI.sendMessage(text, userId, activeSessionId)
+        const response = await chatAPI.sendMessage(text, userId, activeSessionId, familyId)
         setMessages(prev => [...prev, {
           role: 'assistant', content: response.data.response, timestamp: new Date(),
         }])
