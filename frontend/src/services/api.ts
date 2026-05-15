@@ -7,8 +7,18 @@ const api = axios.create({
 
 // 聊天相关
 export const chatAPI = {
-  sendMessage: (message: string, userId?: string) =>
-    api.post('/chat', { message, user_id: userId }),
+  sendMessage: (message: string, userId?: string, sessionId?: string) =>
+    api.post('/chat', { message, user_id: userId, session_id: sessionId }),
+  listSessions: (userId: string, limit: number = 50) =>
+    api.get(`/chat/sessions/${userId}`, { params: { limit } }),
+  createSession: (userId: string, title?: string) =>
+    api.post('/chat/sessions', { user_id: userId, title }),
+  updateSession: (userId: string, sessionId: string, title: string) =>
+    api.put(`/chat/sessions/${userId}/${sessionId}`, { title }),
+  archiveSession: (userId: string, sessionId: string) =>
+    api.delete(`/chat/sessions/${userId}/${sessionId}`),
+  getHistory: (userId: string, sessionId: string, limit: number = 100) =>
+    api.get(`/chat/history/${userId}`, { params: { session_id: sessionId, limit } }),
 }
 
 // 成员管理
@@ -74,6 +84,16 @@ export const knowledgeAPI = {
   categories: () => api.get('/knowledge/categories'),
   getDetail: (docId: string) => 
     api.get(`/knowledge/detail/${docId}`),
+}
+
+// 记忆管理
+export const memoryAPI = {
+  list: (params?: { query?: string; memory_type?: string; limit?: number }) =>
+    api.get('/memory', { params }),
+  stats: () => api.get('/memory/stats'),
+  update: (id: string, data: { content: string; importance?: number; tags?: string[] }) =>
+    api.put(`/memory/${id}`, data),
+  remove: (id: string) => api.delete(`/memory/${id}`),
 }
 
 // 家庭财务

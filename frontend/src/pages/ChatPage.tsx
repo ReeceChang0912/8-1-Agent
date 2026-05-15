@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined } from '@ant-design/icons'
+import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip } from 'antd'
+import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
@@ -11,6 +11,12 @@ import rehypeHighlight from 'rehype-highlight'
 
 const { TextArea } = Input
 
+const getChatWebSocketUrl = (userId: string) => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const apiPath = `/api/chat/stream/${encodeURIComponent(userId)}`
+  return `${protocol}//${window.location.host}${apiPath}`
+}
+
 interface Message {
   role: 'user' | 'assistant'
   content: string
@@ -18,7 +24,22 @@ interface Message {
   images?: { url: string; name: string }[]
 }
 
+interface ChatSession {
+  session_id: string
+  title: string
+  updated_at?: string
+  created_at?: string
+  message_count?: number
+  last_message?: string
+}
+
 const ChatPage: React.FC = () => {
+  const userId = localStorage.getItem('member_name') || 'anonymous'
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [activeSessionId, setActiveSessionId] = useState<string>('')
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [renamingSession, setRenamingSession] = useState<ChatSession | null>(null)
+  const [renameTitle, setRenameTitle] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,6 +67,7 @@ const ChatPage: React.FC = () => {
   )
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null) // WebSocket连接
+  const activeSessionRef = useRef<string>('')
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -64,6 +86,133 @@ const ChatPage: React.FC = () => {
     scrollToBottom()
   }, [messages, streamingMessage])
 
+  useEffect(() => {
+    activeSessionRef.current = activeSessionId
+  }, [activeSessionId])
+
+  useEffect(() => {
+    loadSessions()
+  }, [])
+
+  useEffect(() => {
+    if (activeSessionId) {
+      loadSessionHistory(activeSessionId)
+    } else {
+      setMessages([])
+    }
+  }, [activeSessionId])
+
+  const loadSessions = async () => {
+    setSessionsLoading(true)
+    try {
+      const res = await chatAPI.listSessions(userId)
+      const list = res.data.sessions || []
+      setSessions(list)
+      if (!activeSessionRef.current && list.length > 0) {
+        setActiveSessionId(list[0].session_id)
+      } else if (activeSessionRef.current && !list.some((item: ChatSession) => item.session_id === activeSessionRef.current)) {
+        setActiveSessionId(list[0]?.session_id || '')
+      }
+    } catch (error) {
+      console.error('加载会话列表失败:', error)
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  const loadSessionHistory = async (sessionId: string) => {
+    try {
+      const res = await chatAPI.getHistory(userId, sessionId, 200)
+      const history = (res.data.history || []).map((item: any) => ({
+        role: item.role,
+        content: item.content,
+        timestamp: item.timestamp ? new Date(item.timestamp) : new Date(),
+      }))
+      setMessages(history)
+      setStreamingMessage('')
+      setIsStreaming(false)
+      setLoading(false)
+    } catch (error) {
+      message.error('加载会话历史失败')
+    }
+  }
+
+  const handleNewSession = async () => {
+    try {
+      const res = await chatAPI.createSession(userId, '新对话')
+      const session = res.data.session
+      setSessions(prev => [session, ...prev])
+      setActiveSessionId(session.session_id)
+      setMessages([])
+      setInputValue('')
+    } catch (error) {
+      message.error('创建会话失败')
+    }
+  }
+
+  const refreshSessionsSoon = () => {
+    setTimeout(loadSessions, 300)
+  }
+
+  const handleSelectSession = (sessionId: string) => {
+    if (sessionId === activeSessionId || loading) return
+    setActiveSessionId(sessionId)
+    setInputValue('')
+    setAttachedFiles([])
+  }
+
+  const openRenameModal = (session: ChatSession) => {
+    setRenamingSession(session)
+    setRenameTitle(session.title || '新对话')
+  }
+
+  const handleRenameSession = async () => {
+    if (!renamingSession) return
+    const title = renameTitle.trim() || '新对话'
+    try {
+      await chatAPI.updateSession(userId, renamingSession.session_id, title)
+      setSessions(prev => prev.map(item =>
+        item.session_id === renamingSession.session_id ? { ...item, title } : item
+      ))
+      setRenamingSession(null)
+      setRenameTitle('')
+    } catch (error) {
+      message.error('重命名会话失败')
+    }
+  }
+
+  const handleArchiveSession = (session: ChatSession) => {
+    Modal.confirm({
+      title: '删除这个会话？',
+      content: session.title || '新对话',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await chatAPI.archiveSession(userId, session.session_id)
+          setSessions(prev => prev.filter(item => item.session_id !== session.session_id))
+          if (activeSessionId === session.session_id) {
+            const nextSession = sessions.find(item => item.session_id !== session.session_id)
+            setActiveSessionId(nextSession?.session_id || '')
+            if (!nextSession) setMessages([])
+          }
+        } catch (error) {
+          message.error('删除会话失败')
+        }
+      },
+    })
+  }
+
+  const formatSessionTime = (value?: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+  }
+
+  const currentSession = sessions.find(item => item.session_id === activeSessionId)
+
   // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
   // Auto-fill input with voice transcript
   useEffect(() => {
@@ -76,7 +225,7 @@ const ChatPage: React.FC = () => {
     const userId = localStorage.getItem('member_name') || 'anonymous'
     
     try {
-      const ws = new WebSocket(`ws://localhost:8000/api/chat/stream/${userId}`)
+      const ws = new WebSocket(getChatWebSocketUrl(userId))
       
       ws.onopen = () => {
         console.log('✅ WebSocket已连接 - 启用流式聊天')
@@ -95,6 +244,11 @@ const ChatPage: React.FC = () => {
         } else if (data.type === 'complete') {
           // 完成,添加到消息列表
           const fullResponse = data.data.full_response
+          const completedSessionId = data.data.session_id
+          if (completedSessionId && !activeSessionRef.current) {
+            setActiveSessionId(completedSessionId)
+            activeSessionRef.current = completedSessionId
+          }
           const assistantMessage: Message = {
             role: 'assistant',
             content: fullResponse,
@@ -108,6 +262,7 @@ const ChatPage: React.FC = () => {
           setStreamingMessage('')
           setIsStreaming(false)
           setLoading(false)
+          refreshSessionsSoon()
         }
       }
       
@@ -167,6 +322,20 @@ const ChatPage: React.FC = () => {
 
   const handleSend = async () => {
     if (!inputValue.trim() && attachedFiles.length === 0) return
+    let sessionId = activeSessionId
+    if (!sessionId) {
+      try {
+        const res = await chatAPI.createSession(userId, inputValue.trim().slice(0, 28) || '新对话')
+        const session = res.data.session
+        sessionId = session.session_id
+        setSessions(prev => [session, ...prev])
+        setActiveSessionId(sessionId)
+        activeSessionRef.current = sessionId
+      } catch (error) {
+        message.error('创建会话失败')
+        return
+      }
+    }
 
     // 构建消息内容
     let messageContent = inputValue
@@ -219,11 +388,11 @@ const ChatPage: React.FC = () => {
 
     // 使用WebSocket发送消息
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ message: messageContent }))
+      wsRef.current.send(JSON.stringify({ message: messageContent, session_id: sessionId }))
     } else {
       // 降级到HTTP模式
       try {
-        const response = await chatAPI.sendMessage(messageContent)
+        const response = await chatAPI.sendMessage(messageContent, userId, sessionId)
         const respText = response.data.response
         const assistantMessage: Message = {
           role: 'assistant',
@@ -235,6 +404,7 @@ const ChatPage: React.FC = () => {
         if (respText.includes('已添加到日程安排')) {
           message.success('📅 已添加到日程管理，快去查看吧！')
         }
+        refreshSessionsSoon()
       } catch (error) {
         message.error('发送消息失败')
       } finally {
@@ -308,13 +478,14 @@ const ChatPage: React.FC = () => {
     setMessages(prev => [...prev, userMessage])
     setLoading(true)
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ message: text }))
+      wsRef.current.send(JSON.stringify({ message: text, session_id: activeSessionId }))
     } else {
       try {
-        const response = await chatAPI.sendMessage(text)
+        const response = await chatAPI.sendMessage(text, userId, activeSessionId)
         setMessages(prev => [...prev, {
           role: 'assistant', content: response.data.response, timestamp: new Date(),
         }])
+        refreshSessionsSoon()
       } catch (error) {
         message.error('操作失败')
       } finally {
@@ -324,34 +495,127 @@ const ChatPage: React.FC = () => {
   }
 
   return (
-    <div className="chat-page-container" style={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="chat-page-container" style={{ height: 'calc(100vh - 200px)', display: 'flex', gap: 16, minHeight: 520 }}>
       <style>{`
         .chat-page-container { height: calc(100vh - 200px); }
+        .chat-session-sidebar {
+          width: 280px;
+          flex: 0 0 280px;
+          display: flex;
+          flex-direction: column;
+        }
+        .chat-main-panel {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .session-card {
+          border: 1px solid transparent;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+        }
+        .session-card:hover { background: #f6f8fb; border-color: #e6edf5; }
+        .session-card.active { background: #eef6ff; border-color: #91caff; }
+        .session-actions { opacity: 0; transition: opacity 0.16s ease; }
+        .session-card:hover .session-actions, .session-card.active .session-actions { opacity: 1; }
         .message-bubble { transition: all 0.2s ease; }
         .message-bubble:hover { transform: translateY(-1px); }
         .user-bubble pre,
         .user-bubble code { color: #333 !important; }
         @media (max-width: 992px) {
-          .chat-page-container { height: calc(100vh - 130px) !important; }
+          .chat-page-container { height: auto !important; flex-direction: column; }
+          .chat-session-sidebar { width: 100%; flex-basis: auto; max-height: 280px; }
+          .chat-main-panel { min-height: 620px; }
           .message-bubble { max-width: 85vw !important; }
         }
       `}</style>
+      <Card
+        className="chat-session-sidebar"
+        title={<Space><MessageOutlined /><span>会话</span></Space>}
+        extra={
+          <Tooltip title="新建会话">
+            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleNewSession} />
+          </Tooltip>
+        }
+        bodyStyle={{ flex: 1, overflow: 'auto', padding: 10 }}
+      >
+        {sessions.length === 0 && !sessionsLoading ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="还没有会话"
+          >
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleNewSession}>
+              新建会话
+            </Button>
+          </Empty>
+        ) : (
+          <List
+            loading={sessionsLoading}
+            dataSource={sessions}
+            split={false}
+            renderItem={(session) => (
+              <div
+                className={`session-card ${session.session_id === activeSessionId ? 'active' : ''}`}
+                onClick={() => handleSelectSession(session.session_id)}
+                style={{ padding: '10px 10px 9px', marginBottom: 6 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <MessageOutlined style={{ color: session.session_id === activeSessionId ? '#1677ff' : '#8c8c8c', marginTop: 3 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: '#1f2937' }}>
+                        {session.title || '新对话'}
+                      </div>
+                      <div className="session-actions" onClick={(event) => event.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
+                        <Tooltip title="重命名">
+                          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openRenameModal(session)} />
+                        </Tooltip>
+                        <Tooltip title="删除">
+                          <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => handleArchiveSession(session)} />
+                        </Tooltip>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 4, color: '#667085', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {session.last_message || '暂无消息'}
+                    </div>
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#98a2b3', fontSize: 11 }}>
+                      <span>{session.message_count || 0} 条消息</span>
+                      <span>{formatSessionTime(session.updated_at || session.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        )}
+      </Card>
+
+      <div className="chat-main-panel">
       <Card 
         title={
           <Space>
-            <span>💬 智能对话</span>
+            <span>{currentSession?.title || '新对话'}</span>
             <Tag color={connectionMode === 'websocket' ? 'green' : 'orange'}>
               {connectionMode === 'websocket' ? '🚀 流式模式' : '⚡ HTTP模式'}
             </Tag>
           </Space>
         }
-        style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
         bodyStyle={{ flex: 1, overflowY: 'auto', padding: '24px' }}
       >
-        <List
-          dataSource={messages}
-          split={false}
-          renderItem={(msg) => (
+        {messages.length === 0 && !isStreaming ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="开始一个新对话"
+            style={{ marginTop: 80 }}
+          />
+        ) : (
+          <List
+            dataSource={messages}
+            split={false}
+            renderItem={(msg) => (
             <div
               style={{
                 display: 'flex',
@@ -424,8 +688,9 @@ const ChatPage: React.FC = () => {
                 )}
               </Space>
             </div>
-          )}
-        />
+            )}
+          />
+        )}
         
         {/* 流式消息显示 */}
         {isStreaming && (
@@ -617,6 +882,27 @@ const ChatPage: React.FC = () => {
           💡 输入 <span style={{ color: '#1890ff', fontWeight: 600 }}>/</span> 使用指令快速操作；直接描述需求我会先询问确认
         </div>
       </Card>
+      </div>
+
+      <Modal
+        title="重命名会话"
+        open={!!renamingSession}
+        onOk={handleRenameSession}
+        onCancel={() => {
+          setRenamingSession(null)
+          setRenameTitle('')
+        }}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Input
+          value={renameTitle}
+          onChange={(event) => setRenameTitle(event.target.value)}
+          maxLength={80}
+          placeholder="输入会话标题"
+          onPressEnter={handleRenameSession}
+        />
+      </Modal>
     </div>
   )
 }

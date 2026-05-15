@@ -204,12 +204,11 @@ class FamilyAgentCore:
         self._last_emotion = emotion_result['primary_emotion'].value
         primary_emotion = emotion_result['primary_emotion']
 
-        # 5. 保存用户消息到短期记忆
-        self.memory_manager.add_memory(
-            content=f"[User] {message}",
-            memory_type=MemoryType.SHORT_TERM,
-            source="chat",
-            tags=["conversation"]
+        # 5. 保存用户消息到短期记忆，并提取可长期保留的偏好/事实
+        self.memory_manager.remember_conversation_turn(
+            user_message=message,
+            user_id=user_id,
+            emotion=self._last_emotion,
         )
 
         # 6. 如果是负面情绪，先生成安抚回应
@@ -218,10 +217,11 @@ class FamilyAgentCore:
                 primary_emotion,
                 context=message
             )
-            self.memory_manager.add_memory(
-                content=f"[Assistant] {comfort_response}",
-                memory_type=MemoryType.SHORT_TERM,
-                source="chat"
+            self.memory_manager.remember_conversation_turn(
+                user_message="",
+                assistant_response=comfort_response,
+                user_id=user_id,
+                emotion=self._last_emotion,
             )
             return comfort_response
 
@@ -240,17 +240,13 @@ class FamilyAgentCore:
             }
             return confirm_msg
 
-        # 8. 检索相关记忆
-        relevant_memories = self.memory_manager.retrieve_memories(
+        # 8. 构建会话记忆上下文：近期对话 + 相关长期记忆 + 工作记忆
+        memory_context = self.memory_manager.build_chat_context(
             query=message,
-            n_results=3
+            user_id=user_id,
+            recent_turns=8,
+            relevant_limit=5,
         )
-
-        memory_context = ""
-        if relevant_memories:
-            memory_context = "\n相关记忆:\n" + "\n".join([
-                m['content'] for m in relevant_memories
-            ])
 
         # 9. 检索相关知识
         knowledge_results = self.knowledge_base.search(message, n_results=2)
@@ -261,20 +257,7 @@ class FamilyAgentCore:
                 r['content'] for r in knowledge_results
             ])
 
-        # 10. 构建提示词
-        full_prompt = f"""
-{personalized_prompt}
-
-{memory_context}
-
-{knowledge_context}
-
-用户消息: {message}
-
-请给出温暖、有帮助的回复。
-"""
-
-        # 11. 生成回复
+        # 10. 生成回复
         if self.llm:
             try:
                 response = self.llm.generate_response(
@@ -288,11 +271,12 @@ class FamilyAgentCore:
         else:
             response = self._generate_simple_response(message, emotion_result)
 
-        # 12. 保存回复到记忆
-        self.memory_manager.add_memory(
-            content=f"[Assistant] {response}",
-            memory_type=MemoryType.SHORT_TERM,
-            source="chat"
+        # 11. 保存回复到短期记忆
+        self.memory_manager.remember_conversation_turn(
+            user_message="",
+            assistant_response=response,
+            user_id=user_id,
+            emotion=self._last_emotion,
         )
 
         return response

@@ -8,11 +8,6 @@ _backend_dir = str(Path(__file__).parent)
 _project_root = str(Path(__file__).parent.parent)
 sys.path = [_project_root, _backend_dir] + sys.path
 
-# 设置数据库连接（优先用环境变量，无则用 .env，最后用默认值）
-import os as _os
-_os.environ['DATABASE_URL'] = 'postgresql://postgres.trhxvrcutwusuxodeppt:NIMAluobin123++@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres'
-_os.environ['_DEBUG_MAIN_LOADED'] = '1'  # 验证代码确实运行了
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -23,7 +18,7 @@ from family_agent.family_auth import FamilyAuthManager
 from family_agent.database import DatabaseManager
 
 # 导入路由模块
-from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench, finance
+from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench, finance, memory
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -131,6 +126,7 @@ app.include_router(stats.router, prefix="/api", tags=["统计信息"])
 app.include_router(notifications.router, prefix="/api", tags=["推送通知"])
 app.include_router(workbench.router, prefix="/api", tags=["工作台"])
 app.include_router(finance.router, prefix="/api", tags=["家庭财务"])
+app.include_router(memory.router, prefix="/api", tags=["记忆管理"])
 
 
 # ===== 根路径 =====

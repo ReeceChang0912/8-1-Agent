@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 import json
 import os
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -106,14 +107,55 @@ class DatabaseManager:
 
             # 聊天历史表
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS chat_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    title TEXT DEFAULT '新对话',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    archived BOOLEAN DEFAULT FALSE
+                )
+            """)
+
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS chat_history (
                     id SERIAL PRIMARY KEY,
                     user_id TEXT NOT NULL,
+                    session_id TEXT,
                     role TEXT NOT NULL,
                     content TEXT NOT NULL,
                     emotion TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
+            """)
+            cursor.execute("ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS session_id TEXT")
+            cursor.execute("""
+                SELECT user_id, MAX(timestamp) AS updated_at
+                FROM chat_history
+                WHERE session_id IS NULL
+                GROUP BY user_id
+            """)
+            legacy_rows = cursor.fetchall()
+            for row in legacy_rows:
+                user_id = row['user_id']
+                session_id = "legacy_" + uuid.uuid5(uuid.NAMESPACE_DNS, f"chat:{user_id}").hex
+                cursor.execute("""
+                    INSERT INTO chat_sessions (session_id, user_id, title, updated_at)
+                    VALUES (%s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP))
+                    ON CONFLICT (session_id) DO NOTHING
+                """, (session_id, user_id, "历史对话", row.get('updated_at')))
+                cursor.execute("""
+                    UPDATE chat_history
+                    SET session_id = %s
+                    WHERE user_id = %s AND session_id IS NULL
+                """, (session_id, user_id))
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_history_user_session
+                ON chat_history (user_id, session_id, timestamp)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_updated
+                ON chat_sessions (user_id, updated_at DESC)
             """)
 
             # 任务表
@@ -330,26 +372,133 @@ class DatabaseManager:
             cursor.execute('DELETE FROM reminders WHERE id = %s', (reminder_id,))
             return cursor.rowcount > 0
 
-    def add_chat_message(self, user_id: str, role: str, content: str, emotion: str = None):
+    def create_chat_session(self, user_id: str, title: str = None) -> Dict:
+        session_id = uuid.uuid4().hex
+        session_title = title or "新对话"
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO chat_history (user_id, role, content, emotion)
-                VALUES (%s, %s, %s, %s)
-            """, (user_id, role, content, emotion))
+                INSERT INTO chat_sessions (session_id, user_id, title)
+                VALUES (%s, %s, %s)
+            """, (session_id, user_id, session_title))
+        return {
+            "session_id": session_id,
+            "user_id": user_id,
+            "title": session_title,
+        }
 
-    def get_chat_history(self, user_id: str, limit: int = 50) -> List[Dict]:
+    def ensure_chat_session(self, user_id: str, session_id: str = None, title: str = None) -> Dict:
+        if session_id:
+            existing = self.get_chat_session(user_id, session_id)
+            if existing:
+                return existing
+        return self.create_chat_session(user_id, title)
+
+    def get_chat_session(self, user_id: str, session_id: str) -> Optional[Dict]:
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                SELECT * FROM chat_history
-                WHERE user_id = %s
-                ORDER BY timestamp ASC
+                SELECT * FROM chat_sessions
+                WHERE user_id = %s AND session_id = %s AND archived = FALSE
+            """, (user_id, session_id))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def list_chat_sessions(self, user_id: str, limit: int = 50) -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    s.session_id,
+                    s.user_id,
+                    s.title,
+                    s.created_at,
+                    s.updated_at,
+                    COALESCE(COUNT(h.id), 0) AS message_count,
+                    (
+                        SELECT h2.content
+                        FROM chat_history h2
+                        WHERE h2.session_id = s.session_id
+                        ORDER BY h2.timestamp DESC, h2.id DESC
+                        LIMIT 1
+                    ) AS last_message
+                FROM chat_sessions s
+                LEFT JOIN chat_history h ON h.session_id = s.session_id
+                WHERE s.user_id = %s AND s.archived = FALSE
+                GROUP BY s.session_id, s.user_id, s.title, s.created_at, s.updated_at
+                ORDER BY s.updated_at DESC
                 LIMIT %s
             """, (user_id, limit))
             return [dict(row) for row in cursor.fetchall()]
 
-    def clear_chat_history(self, user_id: str):
+    def update_chat_session_title(self, user_id: str, session_id: str, title: str) -> bool:
         with self.conn.cursor() as cursor:
-            cursor.execute('DELETE FROM chat_history WHERE user_id = %s', (user_id,))
+            cursor.execute("""
+                UPDATE chat_sessions
+                SET title = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND session_id = %s
+            """, (title[:80] or "新对话", user_id, session_id))
+            return cursor.rowcount > 0
+
+    def archive_chat_session(self, user_id: str, session_id: str) -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE chat_sessions
+                SET archived = TRUE, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND session_id = %s
+            """, (user_id, session_id))
+            return cursor.rowcount > 0
+
+    def add_chat_message(self, user_id: str, role: str, content: str, emotion: str = None,
+                         session_id: str = None):
+        if session_id:
+            session = self.ensure_chat_session(user_id, session_id)
+            session_id = session["session_id"]
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO chat_history (user_id, session_id, role, content, emotion)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, session_id, role, content, emotion))
+            if session_id:
+                cursor.execute("""
+                    UPDATE chat_sessions
+                    SET updated_at = CURRENT_TIMESTAMP,
+                        title = CASE
+                            WHEN title = '新对话' AND %s = 'user'
+                            THEN %s
+                            ELSE title
+                        END
+                    WHERE session_id = %s AND user_id = %s
+                """, (role, self._derive_chat_title(content), session_id, user_id))
+
+    def get_chat_history(self, user_id: str, limit: int = 50, session_id: str = None) -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            if session_id:
+                cursor.execute("""
+                    SELECT * FROM chat_history
+                    WHERE user_id = %s AND session_id = %s
+                    ORDER BY timestamp ASC, id ASC
+                    LIMIT %s
+                """, (user_id, session_id, limit))
+            else:
+                cursor.execute("""
+                    SELECT * FROM chat_history
+                    WHERE user_id = %s
+                    ORDER BY timestamp ASC, id ASC
+                    LIMIT %s
+                """, (user_id, limit))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def clear_chat_history(self, user_id: str, session_id: str = None):
+        with self.conn.cursor() as cursor:
+            if session_id:
+                cursor.execute(
+                    'DELETE FROM chat_history WHERE user_id = %s AND session_id = %s',
+                    (user_id, session_id)
+                )
+            else:
+                cursor.execute('DELETE FROM chat_history WHERE user_id = %s', (user_id,))
+
+    def _derive_chat_title(self, content: str) -> str:
+        text = " ".join((content or "").split())
+        return text[:28] or "新对话"
 
     def add_task(self, task_id: str, from_member: str, to_member: str, content: str,
                  task_type: str = 'general', priority: str = 'normal',

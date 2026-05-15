@@ -18,10 +18,19 @@ executor = ThreadPoolExecutor(max_workers=4)
 class ChatRequest(BaseModel):
     message: str
     user_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
     emotion: Optional[str] = None
+    session_id: Optional[str] = None
+
+class ChatSessionCreate(BaseModel):
+    user_id: str
+    title: Optional[str] = None
+
+class ChatSessionUpdate(BaseModel):
+    title: str
 
 
 def get_agent() -> FamilyAgentCore:
@@ -68,7 +77,11 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
             data = await websocket.receive_text()
             request = json.loads(data)
             message = request.get('message', '')
-            get_chat_history().add_message(user_id, 'user', message)
+            session_id = request.get('session_id')
+            if not session_id:
+                session = get_chat_history().create_session(user_id, _derive_title(message))
+                session_id = session.get('session_id')
+            get_chat_history().add_message(user_id, 'user', message, session_id=session_id)
             await manager.send_message(user_id, json.dumps({'type': 'typing', 'data': True}))
             loop = asyncio.get_event_loop()
             agent = get_agent()
@@ -76,12 +89,13 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                 executor,
                 lambda: (agent.chat(message, user_id=user_id), agent.get_last_emotion())
             )
-            get_chat_history().add_message(user_id, 'assistant', response, emotion)
+            get_chat_history().add_message(user_id, 'assistant', response, emotion, session_id=session_id)
             for i, char in enumerate(response):
                 await manager.send_message(user_id, json.dumps({'type': 'chunk', 'data': char, 'index': i}))
                 await asyncio.sleep(0.03)
             await manager.send_message(user_id, json.dumps({
-                'type': 'complete', 'data': {'full_response': response, 'emotion': emotion}
+                'type': 'complete',
+                'data': {'full_response': response, 'emotion': emotion, 'session_id': session_id}
             }))
     except WebSocketDisconnect:
         manager.disconnect(user_id)
@@ -97,20 +111,53 @@ async def chat(request: ChatRequest):
         response = agent.chat(request.message, user_id=request.user_id)
         emotion = agent.get_last_emotion()
         if request.user_id:
-            get_chat_history().add_message(request.user_id, 'user', request.message)
-            get_chat_history().add_message(request.user_id, 'assistant', response, emotion)
-        return ChatResponse(response=response, emotion=emotion)
+            session_id = request.session_id
+            if not session_id:
+                session = get_chat_history().create_session(request.user_id, _derive_title(request.message))
+                session_id = session.get('session_id')
+            get_chat_history().add_message(request.user_id, 'user', request.message, session_id=session_id)
+            get_chat_history().add_message(request.user_id, 'assistant', response, emotion, session_id=session_id)
+        return ChatResponse(response=response, emotion=emotion, session_id=session_id if request.user_id else None)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/chat/sessions/{user_id}")
+async def list_chat_sessions_endpoint(user_id: str, limit: int = 50):
+    sessions = get_chat_history().list_sessions(user_id, limit)
+    return {"sessions": sessions}
+
+
+@router.post("/chat/sessions")
+async def create_chat_session_endpoint(request: ChatSessionCreate):
+    session = get_chat_history().create_session(request.user_id, request.title)
+    return {"success": True, "session": session}
+
+
+@router.put("/chat/sessions/{user_id}/{session_id}")
+async def update_chat_session_endpoint(user_id: str, session_id: str, request: ChatSessionUpdate):
+    ok = get_chat_history().update_session_title(user_id, session_id, request.title)
+    return {"success": ok}
+
+
+@router.delete("/chat/sessions/{user_id}/{session_id}")
+async def archive_chat_session_endpoint(user_id: str, session_id: str):
+    ok = get_chat_history().archive_session(user_id, session_id)
+    return {"success": ok}
+
+
 @router.get("/chat/history/{user_id}")
-async def get_chat_history_endpoint(user_id: str, limit: int = 50):
-    history = get_chat_history().get_history(user_id, limit)
+async def get_chat_history_endpoint(user_id: str, limit: int = 50, session_id: str = None):
+    history = get_chat_history().get_history(user_id, limit, session_id=session_id)
     return {"history": history, "total": len(history)}
 
 
 @router.post("/chat/history/{user_id}/clear")
-async def clear_chat_history_endpoint(user_id: str):
-    get_chat_history().clear_history(user_id)
+async def clear_chat_history_endpoint(user_id: str, session_id: str = None):
+    get_chat_history().clear_history(user_id, session_id=session_id)
     return {"success": True, "message": "聊天历史已清空"}
+
+
+def _derive_title(content: str) -> str:
+    text = " ".join((content or "").split())
+    return text[:28] or "新对话"

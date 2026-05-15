@@ -17,6 +17,7 @@ import {
   BellOutlined,
   AppstoreOutlined,
   WalletOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import WorkbenchPage from './pages/WorkbenchPage'
@@ -32,6 +33,7 @@ import MCPPage from './pages/MCPPage'
 import StatsPage from './pages/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import FinancePage from './pages/FinancePage'
+import MemoryPage from './pages/MemoryPage'
 import LoginPage from './pages/LoginPage'
 import axios from 'axios'
 
@@ -45,6 +47,7 @@ const PAGE_ROUTES: Record<string, string> = {
   shopping: '/shopping',
   photos: '/photos',
   knowledge: '/knowledge',
+  memory: '/memory',
   skills: '/skills',
   smarthome: '/smarthome',
   mcp: '/mcp',
@@ -151,6 +154,7 @@ const App: React.FC = () => {
     { key: 'shopping', icon: <ShoppingCartOutlined />, label: '购物清单' },
     { key: 'photos', icon: <PictureOutlined />, label: '照片记忆' },
     { key: 'knowledge', icon: <BookOutlined />, label: '知识库' },
+    { key: 'memory', icon: <DatabaseOutlined />, label: '记忆管理' },
     { key: 'skills', icon: <ThunderboltOutlined />, label: '技能中心' },
     { key: 'smarthome', icon: <HomeOutlined />, label: '智能家居' },
     { key: 'mcp', icon: <ApiOutlined />, label: 'MCP协议' },
@@ -183,6 +187,8 @@ const App: React.FC = () => {
         return <PhotosPage />
       case 'knowledge':
         return <KnowledgePage />
+      case 'memory':
+        return <MemoryPage />
       case 'skills':
         return <SkillsPage />
       case 'smarthome':
