@@ -51,6 +51,36 @@ def test_chat_context_filters_user_specific_memories(tmp_path):
     assert "乌龙茶" not in bob_context
 
 
+def test_chat_context_filters_family_specific_memories(tmp_path):
+    manager = _memory_manager(tmp_path)
+
+    manager.remember_conversation_turn("我喜欢喝乌龙茶", user_id="mom", family_id="family-a")
+    manager.remember_conversation_turn("我喜欢喝咖啡", user_id="mom", family_id="family-b")
+
+    family_a_context = manager.build_chat_context("喜欢喝什么", user_id="mom", family_id="family-a")
+    family_b_context = manager.build_chat_context("喜欢喝什么", user_id="mom", family_id="family-b")
+
+    assert "乌龙茶" in family_a_context
+    assert "咖啡" not in family_a_context
+    assert "咖啡" in family_b_context
+    assert "乌龙茶" not in family_b_context
+
+
+def test_memory_delete_respects_family_scope(tmp_path):
+    manager = _memory_manager(tmp_path)
+
+    memory_id = manager.add_memory(
+        content="家庭A的重要记忆",
+        memory_type=MemoryType.LONG_TERM,
+        metadata={"user_id": "mom", "family_id": "family-a"},
+    )
+
+    assert not manager.delete_memory(memory_id, user_id="mom", family_id="family-b")
+    assert manager.list_memories(family_id="family-a")
+    assert manager.delete_memory(memory_id, user_id="mom", family_id="family-a")
+    assert manager.list_memories(family_id="family-a") == []
+
+
 def test_short_term_memory_compresses_to_summary(tmp_path):
     manager = _memory_manager(tmp_path)
     manager.compress_after = 6

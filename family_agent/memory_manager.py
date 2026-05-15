@@ -170,7 +170,8 @@ class FamilyMemoryManager:
                          memory_types: List[MemoryType] = None,
                          n_results: int = 5,
                          min_importance: float = 0.0,
-                         user_id: str = None) -> List[Dict]:
+                         user_id: str = None,
+                         family_id: str = None) -> List[Dict]:
         """检索相关记忆"""
         
         if memory_types is None:
@@ -194,7 +195,7 @@ class FamilyMemoryManager:
                     
                     if meta.get('importance', 0) < min_importance:
                         continue
-                    if not self._memory_matches_user(meta, user_id):
+                    if not self._memory_matches_scope(meta, user_id=user_id, family_id=family_id):
                         continue
                     
                     results.append({
@@ -209,13 +210,17 @@ class FamilyMemoryManager:
             or MemoryType.EPISODIC in memory_types
             or MemoryType.SUMMARY in memory_types
         ):
-            results.extend(self._search_fallback_memories(query, memory_types, min_importance, user_id=user_id))
+            results.extend(self._search_fallback_memories(
+                query, memory_types, min_importance, user_id=user_id, family_id=family_id
+            ))
             if MemoryType.SUMMARY in memory_types:
-                results.extend(self._search_summaries(query, min_importance, user_id=user_id))
+                results.extend(self._search_summaries(query, min_importance, user_id=user_id, family_id=family_id))
         
         if MemoryType.SHORT_TERM in memory_types:
             for mem in reversed(self.short_term_memory[-20:]):
-                if query.lower() in mem.content.lower() and self._memory_matches_user(mem.to_dict(), user_id):
+                if query.lower() in mem.content.lower() and self._memory_matches_scope(
+                    mem.to_dict(), user_id=user_id, family_id=family_id
+                ):
                     results.append({
                         "content": mem.content,
                         "metadata": mem.to_dict(),
@@ -226,11 +231,11 @@ class FamilyMemoryManager:
         
         return results[:n_results]
     
-    def get_conversation_context(self, n_turns: int = 10, user_id: str = None) -> str:
+    def get_conversation_context(self, n_turns: int = 10, user_id: str = None, family_id: str = None) -> str:
         """获取对话上下文"""
         recent_memories = [
             memory for memory in self.short_term_memory
-            if self._memory_matches_user(memory.to_dict(), user_id)
+            if self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id)
         ][-n_turns:]
         
         context = "\n".join([
@@ -240,16 +245,17 @@ class FamilyMemoryManager:
         
         return context
 
-    def get_summary_context(self, query: str = "", limit: int = 3, user_id: str = None) -> str:
+    def get_summary_context(self, query: str = "", limit: int = 3,
+                            user_id: str = None, family_id: str = None) -> str:
         """Return recent and query-relevant compressed conversation summaries."""
         all_summaries = [
             memory for memory in self.conversation_summaries
-            if self._memory_matches_user(memory.to_dict(), user_id)
+            if self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id)
         ]
         summaries = list(reversed(all_summaries[-limit:]))
         if query:
             query_chars = set(query.lower())
-            relevant = self._search_summaries(query, min_importance=0.0, user_id=user_id)
+            relevant = self._search_summaries(query, min_importance=0.0, user_id=user_id, family_id=family_id)
             for item in relevant:
                 memory = item.get("memory")
                 if memory and memory not in summaries:
@@ -268,11 +274,13 @@ class FamilyMemoryManager:
         user_message: str,
         assistant_response: str = "",
         user_id: str = None,
+        family_id: str = None,
         emotion: str = None,
     ) -> List[str]:
         """Persist a chat turn and promote durable user facts to long-term memory."""
         metadata = {
             "user_id": user_id or "",
+            "family_id": family_id or "",
             "emotion": emotion or "",
             "role": "user" if user_message else "assistant",
         }
@@ -281,7 +289,7 @@ class FamilyMemoryManager:
                 content=f"[User:{user_id or 'unknown'}] {user_message}",
                 memory_type=MemoryType.SHORT_TERM,
                 source="chat",
-                tags=["conversation", user_id or "anonymous"],
+                tags=["conversation", family_id or "global", user_id or "anonymous"],
                 related_members=[user_id] if user_id else [],
                 metadata=metadata,
             )
@@ -291,7 +299,7 @@ class FamilyMemoryManager:
                 content=f"[Assistant] {assistant_response}",
                 memory_type=MemoryType.SHORT_TERM,
                 source="chat",
-                tags=["conversation", user_id or "anonymous"],
+                tags=["conversation", family_id or "global", user_id or "anonymous"],
                 related_members=[user_id] if user_id else [],
                 metadata={**metadata, "role": "assistant"},
             )
@@ -304,12 +312,17 @@ class FamilyMemoryManager:
                 memory_type=MemoryType.LONG_TERM,
                 source="chat_fact",
                 importance=self.score_importance(fact, fact_type),
-                tags=["profile", "auto_extracted", fact_type, user_id or "anonymous"],
+                tags=["profile", "auto_extracted", fact_type, family_id or "global", user_id or "anonymous"],
                 related_members=[user_id] if user_id else [],
-                metadata={"user_id": user_id or "", "origin": "chat", "fact_type": fact_type},
+                metadata={
+                    "user_id": user_id or "",
+                    "family_id": family_id or "",
+                    "origin": "chat",
+                    "fact_type": fact_type,
+                },
             )
             promoted.append(memory_id)
-        self._maybe_record_episode(user_message, assistant_response, user_id, emotion)
+        self._maybe_record_episode(user_message, assistant_response, user_id, family_id, emotion)
         return promoted
 
     def extract_memorable_facts(self, text: str) -> List[str]:
@@ -367,6 +380,7 @@ class FamilyMemoryManager:
         self,
         query: str,
         user_id: str = None,
+        family_id: str = None,
         recent_turns: int = 8,
         relevant_limit: int = 5,
         max_chars: int = 6000,
@@ -374,7 +388,7 @@ class FamilyMemoryManager:
         """Build compact context from summaries, retrieval, working memory, and recent turns."""
         parts = []
 
-        summary_context = self.get_summary_context(query=query, limit=3, user_id=user_id)
+        summary_context = self.get_summary_context(query=query, limit=3, user_id=user_id, family_id=family_id)
         if summary_context:
             parts.append(f"压缩会话摘要:\n{summary_context}")
 
@@ -384,6 +398,7 @@ class FamilyMemoryManager:
             n_results=relevant_limit,
             min_importance=0.2,
             user_id=user_id,
+            family_id=family_id,
         )
         if relevant_memories:
             seen = set()
@@ -401,10 +416,11 @@ class FamilyMemoryManager:
             working_lines = [
                 f"- {key}: {memory.content}"
                 for key, memory in self.working_memory.items()
+                if self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id)
             ]
             parts.append("当前工作记忆:\n" + "\n".join(working_lines[:8]))
 
-        recent_context = self.get_conversation_context(recent_turns, user_id=user_id)
+        recent_context = self.get_conversation_context(recent_turns, user_id=user_id, family_id=family_id)
         if recent_context:
             parts.append(f"最近对话:\n{recent_context}")
 
@@ -439,7 +455,8 @@ class FamilyMemoryManager:
             "chroma_path": str(self.chroma_path),
         }
 
-    def list_memories(self, query: str = "", memory_type: str = "all", limit: int = 100) -> List[Dict]:
+    def list_memories(self, query: str = "", memory_type: str = "all", limit: int = 100,
+                      user_id: str = None, family_id: str = None) -> List[Dict]:
         """List manageable memories for UI review."""
         items: List[Memory] = []
         if memory_type in ("all", MemoryType.SHORT_TERM.value):
@@ -455,6 +472,8 @@ class FamilyMemoryManager:
         result = []
         seen = set()
         for memory in items:
+            if not self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id):
+                continue
             if query_lower and query_lower not in memory.content.lower():
                 continue
             key = memory.id or f"{memory.memory_type.value}:{memory.timestamp}:{memory.content[:24]}"
@@ -472,7 +491,13 @@ class FamilyMemoryManager:
             MemoryType.EPISODIC.value,
             MemoryType.SUMMARY.value,
         ):
-            result.extend(self._list_chroma_memories(query=query, memory_type=memory_type, limit=limit))
+            result.extend(self._list_chroma_memories(
+                query=query,
+                memory_type=memory_type,
+                limit=limit,
+                user_id=user_id,
+                family_id=family_id,
+            ))
             deduped = {}
             for item in result:
                 deduped[item["id"]] = item
@@ -481,7 +506,7 @@ class FamilyMemoryManager:
         return result[:limit]
 
     def update_memory(self, memory_id: str, content: str, importance: float = None,
-                      tags: List[str] = None) -> bool:
+                      tags: List[str] = None, user_id: str = None, family_id: str = None) -> bool:
         """Update memory content/metadata."""
         updated = False
         stores = [
@@ -493,6 +518,8 @@ class FamilyMemoryManager:
         for store in stores:
             for memory in store:
                 if (memory.id or "") == memory_id:
+                    if not self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id):
+                        continue
                     memory.content = content
                     if importance is not None:
                         memory.importance = importance
@@ -505,6 +532,8 @@ class FamilyMemoryManager:
                 got = self.long_term_collection.get(ids=[memory_id], include=["documents", "metadatas"])
                 if got.get("ids"):
                     meta = got["metadatas"][0] or {}
+                    if not self._memory_matches_scope(meta, user_id=user_id, family_id=family_id):
+                        return updated
                     meta["importance"] = importance if importance is not None else meta.get("importance", 0.5)
                     if tags is not None:
                         meta["tags"] = tags
@@ -520,7 +549,7 @@ class FamilyMemoryManager:
             self._save_memories()
         return updated
 
-    def delete_memory(self, memory_id: str) -> bool:
+    def delete_memory(self, memory_id: str, user_id: str = None, family_id: str = None) -> bool:
         """Delete a memory from local stores and Chroma when possible."""
         before = (
             len(self.short_term_memory)
@@ -528,16 +557,29 @@ class FamilyMemoryManager:
             + len(self.conversation_summaries)
             + len(self.working_memory)
         )
-        self.short_term_memory = [m for m in self.short_term_memory if (m.id or "") != memory_id]
-        self.long_term_fallback = [m for m in self.long_term_fallback if (m.id or "") != memory_id]
-        self.conversation_summaries = [m for m in self.conversation_summaries if (m.id or "") != memory_id]
+        self.short_term_memory = [
+            m for m in self.short_term_memory
+            if (m.id or "") != memory_id or not self._memory_matches_scope(m.to_dict(), user_id=user_id, family_id=family_id)
+        ]
+        self.long_term_fallback = [
+            m for m in self.long_term_fallback
+            if (m.id or "") != memory_id or not self._memory_matches_scope(m.to_dict(), user_id=user_id, family_id=family_id)
+        ]
+        self.conversation_summaries = [
+            m for m in self.conversation_summaries
+            if (m.id or "") != memory_id or not self._memory_matches_scope(m.to_dict(), user_id=user_id, family_id=family_id)
+        ]
         self.working_memory = {
             key: memory for key, memory in self.working_memory.items()
             if (memory.id or key) != memory_id
+            or not self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id)
         }
         if self.long_term_collection and memory_id:
             try:
-                self.long_term_collection.delete(ids=[memory_id])
+                got = self.long_term_collection.get(ids=[memory_id], include=["metadatas"])
+                meta = (got.get("metadatas") or [{}])[0] if got.get("ids") else {}
+                if self._memory_matches_scope(meta or {}, user_id=user_id, family_id=family_id):
+                    self.long_term_collection.delete(ids=[memory_id])
             except Exception:
                 pass
         self._save_memories()
@@ -549,7 +591,8 @@ class FamilyMemoryManager:
         )
         return after < before
 
-    def _list_chroma_memories(self, query: str = "", memory_type: str = "all", limit: int = 100) -> List[Dict]:
+    def _list_chroma_memories(self, query: str = "", memory_type: str = "all", limit: int = 100,
+                              user_id: str = None, family_id: str = None) -> List[Dict]:
         try:
             data = self.long_term_collection.get(include=["documents", "metadatas"], limit=limit * 3)
         except Exception:
@@ -564,6 +607,8 @@ class FamilyMemoryManager:
             meta = metas[idx] if idx < len(metas) and metas[idx] else {}
             item_type = meta.get("memory_type", MemoryType.LONG_TERM.value)
             if memory_type != "all" and item_type != memory_type and meta.get("type") != memory_type:
+                continue
+            if not self._memory_matches_scope(meta, user_id=user_id, family_id=family_id):
                 continue
             if query_lower and query_lower not in content.lower():
                 continue
@@ -654,6 +699,8 @@ class FamilyMemoryManager:
     def _chroma_metadata(self, memory: Memory, extra: Dict = None) -> Dict:
         data = memory.to_dict()
         nested_metadata = data.pop("metadata", {}) or {}
+        data["user_id"] = nested_metadata.get("user_id", data.get("user_id", ""))
+        data["family_id"] = nested_metadata.get("family_id", data.get("family_id", ""))
         data["metadata_json"] = json.dumps(nested_metadata, ensure_ascii=False, sort_keys=True)
         if extra:
             data.update(extra)
@@ -662,23 +709,40 @@ class FamilyMemoryManager:
     def _maybe_compress_short_term(self):
         if len(self.short_term_memory) <= self.compress_after:
             return
-        chunk_size = len(self.short_term_memory) - self.keep_recent_after_compress
-        if chunk_size <= 0:
+        candidate_count = len(self.short_term_memory) - self.keep_recent_after_compress
+        if candidate_count <= 0:
             return
-        chunk = self.short_term_memory[:chunk_size]
+        candidates = self.short_term_memory[:candidate_count]
+        first_scope = self._memory_scope_key(candidates[0])
+        chunk = []
+        for memory in candidates:
+            if self._memory_scope_key(memory) != first_scope:
+                break
+            chunk.append(memory)
+        if len(chunk) < 2:
+            return
         summary = self._summarize_memory_chunk(chunk)
         if summary:
             first_ts = chunk[0].timestamp
             last_ts = chunk[-1].timestamp
+            family_id = self._metadata_family_id(chunk[0].to_dict())
+            user_id = self._metadata_user_id(chunk[0].to_dict())
             self.add_memory(
                 content=summary,
                 memory_type=MemoryType.SUMMARY,
                 source="compression",
                 importance=0.76,
-                tags=["conversation_summary"],
-                metadata={"from": first_ts, "to": last_ts, "count": len(chunk)},
+                tags=["conversation_summary", family_id or "global", user_id or "anonymous"],
+                related_members=[user_id] if user_id else [],
+                metadata={
+                    "from": first_ts,
+                    "to": last_ts,
+                    "count": len(chunk),
+                    "family_id": family_id,
+                    "user_id": user_id,
+                },
             )
-        self.short_term_memory = self.short_term_memory[chunk_size:]
+        self.short_term_memory = self.short_term_memory[len(chunk):]
 
     def _summarize_memory_chunk(self, memories: List[Memory]) -> str:
         facts = []
@@ -724,6 +788,7 @@ class FamilyMemoryManager:
         user_message: str,
         assistant_response: str,
         user_id: str = None,
+        family_id: str = None,
         emotion: str = None,
     ):
         text = f"{user_message}\n{assistant_response}".strip()
@@ -736,9 +801,9 @@ class FamilyMemoryManager:
                 memory_type=MemoryType.EPISODIC,
                 source="chat_episode",
                 importance=0.72 if emotion not in {"anger", "sadness", "anxiety"} else 0.86,
-                tags=["episode", user_id or "anonymous"],
+                tags=["episode", family_id or "global", user_id or "anonymous"],
                 related_members=[user_id] if user_id else [],
-                metadata={"user_id": user_id or "", "emotion": emotion or ""},
+                metadata={"user_id": user_id or "", "family_id": family_id or "", "emotion": emotion or ""},
             )
 
     def _extract_topic(self, text: str) -> str:
@@ -765,19 +830,21 @@ class FamilyMemoryManager:
             except Exception as e:
                 print(f"摘要写入 Chroma 失败，保留本地摘要: {e}")
 
-    def _search_summaries(self, query: str, min_importance: float, user_id: str = None) -> List[Dict]:
+    def _search_summaries(self, query: str, min_importance: float,
+                          user_id: str = None, family_id: str = None) -> List[Dict]:
         if not query:
             return [
                 {"content": memory.content, "metadata": memory.to_dict(), "distance": 0.5, "memory": memory}
                 for memory in reversed(self.conversation_summaries)
-                if memory.importance >= min_importance and self._memory_matches_user(memory.to_dict(), user_id)
+                if memory.importance >= min_importance
+                and self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id)
             ]
         query_chars = set(query.lower())
         matches = []
         for memory in self.conversation_summaries:
             if memory.importance < min_importance:
                 continue
-            if not self._memory_matches_user(memory.to_dict(), user_id):
+            if not self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id):
                 continue
             overlap = len(query_chars & set(memory.content.lower()))
             if overlap >= 2:
@@ -824,12 +891,20 @@ class FamilyMemoryManager:
         ]
         self.long_term_fallback.append(memory)
 
+    def _memory_scope_key(self, memory: Memory) -> tuple:
+        data = memory.to_dict()
+        return (
+            self._metadata_family_id(data),
+            self._metadata_user_id(data),
+        )
+
     def _search_fallback_memories(
         self,
         query: str,
         memory_types: List[MemoryType],
         min_importance: float,
         user_id: str = None,
+        family_id: str = None,
     ) -> List[Dict]:
         query_text = query.lower()
         query_chars = set(query_text)
@@ -837,7 +912,7 @@ class FamilyMemoryManager:
         for memory in self.long_term_fallback:
             if memory.memory_type not in memory_types or memory.importance < min_importance:
                 continue
-            if not self._memory_matches_user(memory.to_dict(), user_id):
+            if not self._memory_matches_scope(memory.to_dict(), user_id=user_id, family_id=family_id):
                 continue
             content = memory.content.lower()
             overlap = len(query_chars & set(content))
@@ -859,6 +934,13 @@ class FamilyMemoryManager:
                 candidates.append(fact)
         return candidates
 
+    def _memory_matches_scope(self, metadata: Dict, user_id: str = None, family_id: str = None) -> bool:
+        if family_id:
+            memory_family_id = self._metadata_family_id(metadata)
+            if memory_family_id != family_id:
+                return False
+        return self._memory_matches_user(metadata, user_id)
+
     def _memory_matches_user(self, metadata: Dict, user_id: str = None) -> bool:
         if not user_id:
             return True
@@ -871,6 +953,24 @@ class FamilyMemoryManager:
             or user_id in related_members
             or user_id in tags
         )
+
+    def _metadata_family_id(self, metadata: Dict) -> str:
+        if not isinstance(metadata, dict):
+            return ""
+        if metadata.get("family_id"):
+            return str(metadata["family_id"])
+        nested = metadata.get("metadata")
+        if isinstance(nested, dict) and nested.get("family_id"):
+            return str(nested["family_id"])
+        metadata_json = metadata.get("metadata_json")
+        if metadata_json:
+            try:
+                parsed = json.loads(metadata_json)
+                if isinstance(parsed, dict) and parsed.get("family_id"):
+                    return str(parsed["family_id"])
+            except (TypeError, ValueError):
+                return ""
+        return ""
 
     def _metadata_user_id(self, metadata: Dict) -> str:
         if not isinstance(metadata, dict):

@@ -13,6 +13,8 @@ const typeOptions = [
 ]
 
 const MemoryPage: React.FC = () => {
+  const userId = localStorage.getItem('member_name') || ''
+  const familyId = localStorage.getItem('family_id') || ''
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [query, setQuery] = useState('')
@@ -26,7 +28,13 @@ const MemoryPage: React.FC = () => {
   const load = async () => {
     setLoading(true)
     try {
-      const res = await memoryAPI.list({ query, memory_type: memoryType, limit: 200 })
+      const res = await memoryAPI.list({
+        query,
+        memory_type: memoryType,
+        limit: 200,
+        user_id: userId,
+        family_id: familyId,
+      })
       setItems(res.data.items || [])
       setStats(res.data.stats || {})
     } catch {
@@ -42,7 +50,7 @@ const MemoryPage: React.FC = () => {
 
   const remove = async (id: string) => {
     try {
-      await memoryAPI.remove(id)
+      await memoryAPI.remove(id, { user_id: userId, family_id: familyId })
       message.success('已删除')
       load()
     } catch {
@@ -64,7 +72,7 @@ const MemoryPage: React.FC = () => {
         content: editContent,
         importance: editImportance ?? undefined,
         tags: editTags.split(',').map(t => t.trim()).filter(Boolean),
-      })
+      }, { user_id: userId, family_id: familyId })
       message.success('已保存')
       setEditing(null)
       load()

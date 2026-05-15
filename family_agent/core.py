@@ -135,7 +135,7 @@ class FamilyAgentCore:
         except Exception as e:
             logger.warning(f"加载日程失败: {e}")
     
-    def chat(self, message: str, user_id: str = None) -> str:
+    def chat(self, message: str, user_id: str = None, family_id: str = None) -> str:
         """
         处理对话
 
@@ -151,6 +151,7 @@ class FamilyAgentCore:
         # 初始化用户确认状态
         if not hasattr(self, '_pending_confirmations'):
             self._pending_confirmations = {}
+        confirmation_key = f"{family_id or ''}:{user_id or ''}"
 
         # 1. 识别用户
         if user_id:
@@ -170,7 +171,7 @@ class FamilyAgentCore:
         logger.info(f"[确认流程] user_id={user_id}, message={message}")
         if hasattr(self, '_pending_confirmations'):
             logger.info(f"[确认流程] 当前待确认: {self._pending_confirmations}")
-        pending = self._pending_confirmations.get(user_id) if self._pending_confirmations else None
+        pending = self._pending_confirmations.get(confirmation_key) if self._pending_confirmations else None
         if pending:
             logger.info(f"[确认流程] 找到待确认操作: intent={pending['intent']}")
             # 检查用户是否确认
@@ -187,17 +188,17 @@ class FamilyAgentCore:
                 # 用户确认，执行操作
                 logger.info(f"[确认流程] 用户确认，开始执行")
                 result = self._execute_pending_action(pending, user_id)
-                del self._pending_confirmations[user_id]
+                del self._pending_confirmations[confirmation_key]
                 logger.info(f"[确认流程] 执行完成")
                 return result
             elif is_cancel:
                 logger.info(f"[确认流程] 用户取消")
-                del self._pending_confirmations[user_id]
+                del self._pending_confirmations[confirmation_key]
                 return "好的，已取消操作，还有什么需要帮忙的吗？"
             else:
                 # 用户说了别的话，取消待确认，走正常对话
                 logger.info(f"[确认流程] 用户输入其他内容，取消待确认")
-                del self._pending_confirmations[user_id]
+                del self._pending_confirmations[confirmation_key]
 
         # 4. 检测情绪
         emotion_result = self.emotion_engine.detect_emotion(message)
@@ -208,6 +209,7 @@ class FamilyAgentCore:
         self.memory_manager.remember_conversation_turn(
             user_message=message,
             user_id=user_id,
+            family_id=family_id,
             emotion=self._last_emotion,
         )
 
@@ -221,6 +223,7 @@ class FamilyAgentCore:
                 user_message="",
                 assistant_response=comfort_response,
                 user_id=user_id,
+                family_id=family_id,
                 emotion=self._last_emotion,
             )
             return comfort_response
@@ -233,7 +236,7 @@ class FamilyAgentCore:
             intent = intent_result['intent']
             confirm_msg = self._build_confirmation_message(intent, message)
             # 保存待确认操作
-            self._pending_confirmations[user_id] = {
+            self._pending_confirmations[confirmation_key] = {
                 'intent': intent,
                 'message': message,
                 'intent_result': intent_result
@@ -244,6 +247,7 @@ class FamilyAgentCore:
         memory_context = self.memory_manager.build_chat_context(
             query=message,
             user_id=user_id,
+            family_id=family_id,
             recent_turns=8,
             relevant_limit=5,
         )
@@ -276,6 +280,7 @@ class FamilyAgentCore:
             user_message="",
             assistant_response=response,
             user_id=user_id,
+            family_id=family_id,
             emotion=self._last_emotion,
         )
 

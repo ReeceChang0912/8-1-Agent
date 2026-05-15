@@ -90,7 +90,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
             agent = get_agent()
             response, emotion = await loop.run_in_executor(
                 executor,
-                lambda: (agent.chat(message, user_id=user_id), agent.get_last_emotion())
+                lambda: (agent.chat(message, user_id=user_id, family_id=family_id), agent.get_last_emotion())
             )
             get_chat_history().add_message(user_id, 'assistant', response, emotion, session_id=session_id, family_id=family_id)
             for i, char in enumerate(response):
@@ -111,11 +111,11 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
 async def chat(request: ChatRequest):
     try:
         agent = get_agent()
-        response = agent.chat(request.message, user_id=request.user_id)
+        family_id = request.family_id or ""
+        response = agent.chat(request.message, user_id=request.user_id, family_id=family_id)
         emotion = agent.get_last_emotion()
         if request.user_id:
             session_id = request.session_id
-            family_id = request.family_id or ""
             if not session_id:
                 session = get_chat_history().create_session(request.user_id, _derive_title(request.message), family_id=family_id)
                 session_id = session.get('session_id')

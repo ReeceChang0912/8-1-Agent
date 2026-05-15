@@ -88,12 +88,13 @@ export const knowledgeAPI = {
 
 // 记忆管理
 export const memoryAPI = {
-  list: (params?: { query?: string; memory_type?: string; limit?: number }) =>
+  list: (params?: { query?: string; memory_type?: string; limit?: number; user_id?: string; family_id?: string }) =>
     api.get('/memory', { params }),
   stats: () => api.get('/memory/stats'),
-  update: (id: string, data: { content: string; importance?: number; tags?: string[] }) =>
-    api.put(`/memory/${id}`, data),
-  remove: (id: string) => api.delete(`/memory/${id}`),
+  update: (id: string, data: { content: string; importance?: number; tags?: string[] }, params?: { user_id?: string; family_id?: string }) =>
+    api.put(`/memory/${id}`, data, { params }),
+  remove: (id: string, params?: { user_id?: string; family_id?: string }) =>
+    api.delete(`/memory/${id}`, { params }),
 }
 
 // 家庭财务
