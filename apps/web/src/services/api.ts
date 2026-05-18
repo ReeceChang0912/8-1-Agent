@@ -19,6 +19,8 @@ export const chatAPI = {
     api.delete(`/chat/sessions/${userId}/${sessionId}`, { params: { family_id: familyId } }),
   getHistory: (userId: string, sessionId: string, limit: number = 100, familyId?: string) =>
     api.get(`/chat/history/${userId}`, { params: { session_id: sessionId, limit, family_id: familyId } }),
+  getContext: (userId: string, familyId?: string) =>
+    api.get(`/chat/context/${userId}`, { params: { family_id: familyId } }),
 }
 
 // 成员管理

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider } from 'antd'
 import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined } from '@ant-design/icons'
-import { chatAPI, lifeModulesAPI, financeAPI } from '../services/api'
+import { chatAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import ReactMarkdown from 'react-markdown'
@@ -60,6 +60,7 @@ const ChatPage: React.FC = () => {
     vehicle: null,
     fitness: null,
     finance: null,
+    memory: [],
   })
   const inputRef = useRef<any>(null)
 
@@ -112,21 +113,8 @@ const ChatPage: React.FC = () => {
 
   const loadModuleSummary = async () => {
     try {
-      const now = new Date()
-      const [wedding, insurance, vehicle, fitness, finance] = await Promise.all([
-        lifeModulesAPI.wedding.stats(familyId),
-        lifeModulesAPI.insurance.stats(familyId),
-        lifeModulesAPI.vehicle.stats(familyId),
-        lifeModulesAPI.fitness.stats(familyId),
-        financeAPI.getSummary(now.getFullYear(), now.getMonth() + 1),
-      ])
-      setModuleSummary({
-        wedding: wedding.data,
-        insurance: insurance.data,
-        vehicle: vehicle.data,
-        fitness: fitness.data,
-        finance: finance.data,
-      })
+      const response = await chatAPI.getContext(userId, familyId)
+      setModuleSummary(response.data || {})
     } catch (error) {
       console.warn('加载聊天上下文摘要失败', error)
     }
@@ -1003,7 +991,24 @@ const ChatPage: React.FC = () => {
             <Space direction="vertical" size={6} style={{ width: '100%', marginTop: 8 }}>
               <Button block onClick={() => setInputValue('帮我加一个车险续保提醒')}>加车险续保提醒</Button>
               <Button block onClick={() => setInputValue('帮我记一条今晚力量训练 45分钟 320kcal')}>记训练</Button>
+              <Button block onClick={() => setInputValue('今天买菜花了 68')}>记支出</Button>
               <Button block onClick={() => setInputValue('看看这个月财务情况')}>看本月财务</Button>
+            </Space>
+          </Card>
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Text strong>最近记忆</Text>
+            <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 8 }}>
+              {(moduleSummary.memory || []).length > 0 ? (
+                (moduleSummary.memory || []).map((item: any) => (
+                  <div key={item.id} style={{ fontSize: 12, color: '#667085', paddingBottom: 6, borderBottom: '1px solid #f0f0f0' }}>
+                    <Tag color="blue">{item.memory_type}</Tag>
+                    <div style={{ marginTop: 4 }}>{item.content}</div>
+                  </div>
+                ))
+              ) : (
+                <Text type="secondary" style={{ fontSize: 12 }}>还没有可展示的近期记忆</Text>
+              )}
             </Space>
           </Card>
         </Space>

@@ -162,6 +162,60 @@ async def clear_chat_history_endpoint(user_id: str, session_id: str = None, fami
     return {"success": True, "message": "聊天历史已清空"}
 
 
+@router.get("/chat/context/{user_id}")
+async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
+    db = get_db_manager()
+    if not db:
+        return {
+            "wedding": None,
+            "insurance": None,
+            "vehicle": None,
+            "fitness": None,
+            "finance": None,
+            "memory": [],
+        }
+
+    from datetime import datetime
+    now = datetime.now()
+    wedding_items = db.get_wedding_items(family_id=family_id)
+    insurance_items = db.get_insurance_policies(family_id=family_id)
+    vehicle_items = db.get_vehicle_records(family_id=family_id)
+    fitness_items = db.get_fitness_records(family_id=family_id)
+    finance_summary = db.get_monthly_summary(now.year, now.month)
+    memory_items = get_agent().memory_manager.list_memories(limit=5, user_id=user_id, family_id=family_id)
+
+    return {
+        "wedding": {
+            "todo_count": sum(1 for item in wedding_items if item.get("item_type") == "todo" and item.get("status") != "done"),
+            "budget_total": round(sum(float(item.get("planned_amount") or 0) for item in wedding_items if item.get("item_type") == "budget"), 2),
+            "spent_total": round(sum(float(item.get("amount") or 0) for item in wedding_items if item.get("item_type") == "budget"), 2),
+        },
+        "insurance": {
+            "policy_count": sum(1 for item in insurance_items if (item.get("record_type") or "policy") == "policy"),
+            "claim_count": sum(1 for item in insurance_items if item.get("record_type") == "claim"),
+        },
+        "vehicle": {
+            "vehicle_count": sum(1 for item in vehicle_items if item.get("record_type") == "vehicle"),
+            "expense_total": round(sum(float(item.get("amount") or 0) for item in vehicle_items if item.get("record_type") == "expense"), 2),
+        },
+        "fitness": {
+            "workout_count": sum(1 for item in fitness_items if item.get("record_type") == "workout"),
+            "avg_weight": round(sum(float(item.get("weight") or 0) for item in fitness_items if item.get("record_type") == "metric") / max(1, sum(1 for item in fitness_items if item.get("record_type") == "metric")), 1) if any(item.get("record_type") == "metric" for item in fitness_items) else 0,
+            "protein_today": round(sum(float(item.get("protein") or 0) for item in fitness_items if item.get("record_type") == "meal"), 2),
+        },
+        "finance": finance_summary,
+        "memory": [
+            {
+                "id": item.get("id"),
+                "content": item.get("content"),
+                "memory_type": item.get("memory_type"),
+                "importance": item.get("importance"),
+            }
+            for item in memory_items[:5]
+        ],
+    }
+
+
 def _derive_title(content: str) -> str:
     text = " ".join((content or "").split())
     return text[:28] or "新对话"

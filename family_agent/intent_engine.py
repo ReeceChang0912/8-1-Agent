@@ -118,6 +118,8 @@ class IntentRecognizer:
         if any(k in message for k in ['财务', '收支', '账单', '支出', '收入']):
             if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
                 return {'intent': 'query_finance', 'confidence': 0.88, 'raw_text': message}
+            if any(k in message for k in ['记', '新增', '添加', '花了', '支出', '收入了', '赚了']):
+                return {'intent': 'add_finance_record', 'confidence': 0.86, 'raw_text': message}
         
         for intent, patterns in self.intent_patterns.items():
             for pattern in patterns:
@@ -195,6 +197,9 @@ class TaskExecutor:
 
         elif intent == 'query_finance':
             return self._handle_query_finance(message)
+
+        elif intent == 'add_finance_record':
+            return self._handle_add_finance_record(message, user_id=user_id)
         
         elif intent == 'query_member':
             return self._handle_query_member(message, intent_result)
@@ -392,6 +397,43 @@ class TaskExecutor:
 
     def _handle_query_finance(self, message: str) -> str:
         return self.agent._handle_finance_command('summary')
+
+    def _handle_add_finance_record(self, message: str, user_id: str = None) -> str:
+        amount_match = re.search(r'(\d+(?:\.\d+)?)', message)
+        if not amount_match:
+            return "抱歉，我没识别到金额。比如：`今天买菜花了 68`。"
+
+        amount = float(amount_match.group(1))
+        is_income = any(k in message for k in ['收入', '进账', '赚了', '收到'])
+        transaction_type = 'income' if is_income else 'expense'
+
+        category_map = [
+            ('餐饮', ['吃饭', '晚饭', '午饭', '早餐', '外卖', '买菜', '奶茶']),
+            ('交通', ['打车', '地铁', '公交', '加油', '停车', '高速']),
+            ('购物', ['买', '下单', '淘宝', '京东', '拼多多']),
+            ('医疗', ['医院', '药', '体检']),
+            ('娱乐', ['电影', '游戏', '唱歌', '聚会']),
+            ('教育', ['课程', '学费', '书', '培训']),
+        ]
+
+        category = '其他收入' if is_income else '其他支出'
+        for candidate, keywords in category_map:
+            if any(keyword in message for keyword in keywords):
+                category = candidate
+                break
+
+        description = re.sub(r'(\d+(?:\.\d+)?)', '', message).strip('：: ，,。')
+        today = datetime.now().strftime('%Y-%m-%d')
+        tid = self.agent.db.add_transaction(
+            amount=amount,
+            transaction_type=transaction_type,
+            category=category,
+            description=description,
+            transaction_date=today,
+            created_by=user_id or '',
+        )
+        direction = '收入' if is_income else '支出'
+        return f"✅ 已记一笔{direction}：¥{amount:.2f}\n分类：{category}\n日期：{today}"
     
     def _handle_assign_task(self, message: str, intent: Dict, user_id: str = None, family_id: str = None) -> str:
         """处理分配任务"""
