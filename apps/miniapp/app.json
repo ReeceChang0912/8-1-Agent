@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/modules/modules",
+    "pages/webview/webview"
+  ],
+  "window": {
+    "navigationBarTitleText": "家庭管理",
+    "navigationBarBackgroundColor": "#f7f8fa",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f8fa"
+  },
+  "style": "v2"
+}

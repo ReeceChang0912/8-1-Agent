@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="hero">
+    <view class="eyebrow">Family Management</view>
+    <view class="title">家庭管理系统</view>
+    <view class="desc">聊天、记忆、备婚、保险、车辆、健身，都放在这一套平台里。</view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">进入 Web 版</view>
+    <button class="primary" bindtap="goWebView">打开主站</button>
+  </view>
+</view>

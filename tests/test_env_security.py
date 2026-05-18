@@ -31,7 +31,7 @@ def test_no_env_in_git_history():
 
 def test_source_has_no_hardcoded_database_url():
     """Test source files don't embed concrete database secrets."""
-    source_roots = [Path("backend"), Path("family_agent"), Path("frontend/src"), Path("tests")]
+    source_roots = [Path("apps/backend"), Path("family_agent"), Path("apps/web/src"), Path("apps/miniapp"), Path("tests")]
     forbidden_markers = [
         "postgres." + "trhxvrcutwusuxodeppt",
         "NIMA" + "luobin",

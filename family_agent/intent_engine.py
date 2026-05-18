@@ -89,6 +89,35 @@ class IntentRecognizer:
         """
         
         message_lower = message.lower()
+
+        # 先做模块级启发式识别，避免被通用“查看/查询”模式提前吞掉
+        if any(k in message for k in ['备婚', '婚礼']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
+                return {'intent': 'query_wedding', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '记个', '补一个']):
+                return {'intent': 'add_wedding_item', 'confidence': 0.88, 'raw_text': message}
+
+        if any(k in message for k in ['保险', '保单', '续保', '理赔', '车险']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
+                return {'intent': 'query_insurance', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
+                return {'intent': 'add_insurance_record', 'confidence': 0.88, 'raw_text': message}
+
+        if any(k in message for k in ['车辆', '保养', '年检']) or ('车' in message and '车险' not in message):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
+                return {'intent': 'query_vehicle', 'confidence': 0.88, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
+                return {'intent': 'add_vehicle_record', 'confidence': 0.86, 'raw_text': message}
+
+        if any(k in message for k in ['健身', '训练', '体重', '体脂', '饮食', '热量', '蛋白']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
+                return {'intent': 'query_fitness', 'confidence': 0.88, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个', '记下']):
+                return {'intent': 'add_fitness_record', 'confidence': 0.86, 'raw_text': message}
+
+        if any(k in message for k in ['财务', '收支', '账单', '支出', '收入']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
+                return {'intent': 'query_finance', 'confidence': 0.88, 'raw_text': message}
         
         for intent, patterns in self.intent_patterns.items():
             for pattern in patterns:
@@ -139,6 +168,33 @@ class TaskExecutor:
         
         elif intent == 'search_knowledge':
             return self._handle_search_knowledge(message, intent_result)
+
+        elif intent == 'query_wedding':
+            return self._handle_query_wedding(message, family_id=family_id)
+
+        elif intent == 'add_wedding_item':
+            return self._handle_add_wedding_item(message, family_id=family_id)
+
+        elif intent == 'query_insurance':
+            return self._handle_query_insurance(message, family_id=family_id)
+
+        elif intent == 'add_insurance_record':
+            return self._handle_add_insurance_record(message, family_id=family_id)
+
+        elif intent == 'query_vehicle':
+            return self._handle_query_vehicle(message, family_id=family_id)
+
+        elif intent == 'add_vehicle_record':
+            return self._handle_add_vehicle_record(message, family_id=family_id)
+
+        elif intent == 'query_fitness':
+            return self._handle_query_fitness(message, family_id=family_id)
+
+        elif intent == 'add_fitness_record':
+            return self._handle_add_fitness_record(message, family_id=family_id)
+
+        elif intent == 'query_finance':
+            return self._handle_query_finance(message)
         
         elif intent == 'query_member':
             return self._handle_query_member(message, intent_result)
@@ -258,6 +314,84 @@ class TaskExecutor:
     def _handle_upload_photo(self, message: str, intent: Dict) -> str:
         """处理照片上传提示"""
         return "📸 请在聊天框中点击上传按钮选择照片,我会自动分析并保存到照片记忆中!"
+
+    def _handle_query_wedding(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'
+        return self.agent._handle_wedding_command(action, family_id=family_id)
+
+    def _handle_add_wedding_item(self, message: str, family_id: str = None) -> str:
+        item_type = 'todo'
+        if any(k in message for k in ['预算', '费用', '花费']):
+            item_type = 'budget'
+        elif any(k in message for k in ['酒店', '摄影', '司仪', '化妆', '供应商']):
+            item_type = 'vendor'
+        elif any(k in message for k in ['时间', '节点', '档期']):
+            item_type = 'timeline'
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的备婚事项'
+        self.agent.db.add_wedding_item(item_type=item_type, title=title, family_id=family_id or "")
+        return f"✅ 已新增备婚记录：{title}\n类型：{item_type}"
+
+    def _handle_query_insurance(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'
+        return self.agent._handle_insurance_command(action, family_id=family_id)
+
+    def _handle_add_insurance_record(self, message: str, family_id: str = None) -> str:
+        record_type = 'policy'
+        if any(k in message for k in ['提醒', '续保']):
+            record_type = 'reminder'
+        elif any(k in message for k in ['理赔']):
+            record_type = 'claim'
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的保险记录'
+        self.agent.db.add_insurance_policy(name=title, title=title, record_type=record_type, family_id=family_id or "")
+        return f"✅ 已新增保险记录：{title}\n类型：{record_type}"
+
+    def _handle_query_vehicle(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'
+        return self.agent._handle_vehicle_command(action, family_id=family_id)
+
+    def _handle_add_vehicle_record(self, message: str, family_id: str = None) -> str:
+        record_type = 'vehicle'
+        if any(k in message for k in ['保养', '机油', '维修']):
+            record_type = 'service'
+        elif any(k in message for k in ['费用', '加油', '停车']):
+            record_type = 'expense'
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的车辆记录'
+        self.agent.db.add_vehicle_record(record_type=record_type, title=title, family_id=family_id or "")
+        return f"✅ 已新增车辆记录：{title}\n类型：{record_type}"
+
+    def _handle_query_fitness(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'
+        return self.agent._handle_fitness_command(action, family_id=family_id)
+
+    def _handle_add_fitness_record(self, message: str, family_id: str = None) -> str:
+        record_type = 'workout'
+        kwargs = {}
+        if any(k in message for k in ['体重', '体脂', '腰围']):
+            record_type = 'metric'
+            weight_match = re.search(r'(\d+(?:\.\d+)?)\s*kg', message.lower())
+            if weight_match:
+                kwargs['weight'] = float(weight_match.group(1))
+        elif any(k in message for k in ['早餐', '午餐', '晚餐', '加餐', '饮食', '热量', '蛋白']):
+            record_type = 'meal'
+            protein_match = re.search(r'(\d+(?:\.\d+)?)\s*g', message.lower())
+            if protein_match:
+                kwargs['protein'] = float(protein_match.group(1))
+        duration_match = re.search(r'(\d+)\s*分钟', message)
+        if duration_match:
+            kwargs['duration'] = float(duration_match.group(1))
+        calorie_match = re.search(r'(\d+)\s*k?cal', message.lower())
+        if calorie_match:
+            kwargs['calories'] = float(calorie_match.group(1))
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个|记下)', '', message).strip('：: ，,。')
+        title = title or '新的健身记录'
+        self.agent.db.add_fitness_record(record_type=record_type, title=title, family_id=family_id or "", **kwargs)
+        return f"✅ 已新增健身记录：{title}\n类型：{record_type}"
+
+    def _handle_query_finance(self, message: str) -> str:
+        return self.agent._handle_finance_command('summary')
     
     def _handle_assign_task(self, message: str, intent: Dict, user_id: str = None, family_id: str = None) -> str:
         """处理分配任务"""

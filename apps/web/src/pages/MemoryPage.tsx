@@ -12,6 +12,14 @@ const typeOptions = [
   { label: '工作记忆', value: 'working' },
 ]
 
+const typeColorMap: Record<string, string> = {
+  long_term: 'blue',
+  episodic: 'purple',
+  summary: 'gold',
+  short_term: 'green',
+  working: 'cyan',
+}
+
 const MemoryPage: React.FC = () => {
   const userId = localStorage.getItem('member_name') || ''
   const familyId = localStorage.getItem('family_id') || ''
@@ -118,7 +126,7 @@ const MemoryPage: React.FC = () => {
               title: '类型',
               dataIndex: 'memory_type',
               width: 120,
-              render: (value) => <Tag>{value}</Tag>,
+              render: (value) => <Tag color={typeColorMap[value] || 'default'}>{value}</Tag>,
             },
             {
               title: '内容',
@@ -128,6 +136,8 @@ const MemoryPage: React.FC = () => {
                   <div style={{ whiteSpace: 'pre-wrap' }}>{value}</div>
                   <div style={{ marginTop: 6 }}>
                     {(row.tags || []).map((tag: string) => <Tag key={tag} color="blue">{tag}</Tag>)}
+                    {row.family_id && <Tag color="geekblue">家庭: {row.family_id}</Tag>}
+                    {row.user_id && <Tag color="lime">成员: {row.user_id}</Tag>}
                   </div>
                 </div>
               ),

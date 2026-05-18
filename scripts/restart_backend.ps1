@@ -28,7 +28,7 @@ foreach ($listener in $listeners) {
 Start-Sleep -Seconds 2
 Start-Process `
     -FilePath python `
-    -ArgumentList @("-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "$Port") `
+    -ArgumentList @("-m", "uvicorn", "backend.main:app", "--app-dir", "apps", "--host", "0.0.0.0", "--port", "$Port") `
     -WorkingDirectory $root `
     -WindowStyle Hidden
 

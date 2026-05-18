@@ -79,6 +79,42 @@ export const statsAPI = {
   getStats: () => api.get('/stats'),
 }
 
+// 平台模块
+export const modulesAPI = {
+  list: () => api.get('/modules'),
+}
+
+export const lifeModulesAPI = {
+  wedding: {
+    list: (familyId?: string) => api.get('/modules/wedding', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/wedding/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/wedding', data),
+    update: (id: number, data: any) => api.put(`/modules/wedding/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/wedding/${id}`, { params: { family_id: familyId } }),
+  },
+  insurance: {
+    list: (familyId?: string) => api.get('/modules/insurance', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/insurance/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/insurance', data),
+    update: (id: number, data: any) => api.put(`/modules/insurance/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/insurance/${id}`, { params: { family_id: familyId } }),
+  },
+  vehicle: {
+    list: (familyId?: string) => api.get('/modules/vehicle', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/vehicle/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/vehicle', data),
+    update: (id: number, data: any) => api.put(`/modules/vehicle/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/vehicle/${id}`, { params: { family_id: familyId } }),
+  },
+  fitness: {
+    list: (familyId?: string) => api.get('/modules/fitness', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/fitness/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/fitness', data),
+    update: (id: number, data: any) => api.put(`/modules/fitness/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/fitness/${id}`, { params: { family_id: familyId } }),
+  },
+}
+
 // 知识库
 export const knowledgeAPI = {
   search: (query: string, category?: string, limit?: number) => 

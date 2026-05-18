@@ -1,10 +1,10 @@
 # ===== 第一阶段：构建前端 =====
-FROM node:20-alpine AS frontend-builder
+FROM node:20-alpine AS web-builder
 
-WORKDIR /frontend
-COPY frontend/package.json frontend/package-lock.json ./
+WORKDIR /repo/apps/web
+COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
-COPY frontend/ ./
+COPY apps/web/ ./
 RUN npm run build
 
 # ===== 第二阶段：后端运行环境 =====
@@ -18,14 +18,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制后端依赖
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY apps/backend/requirements.txt ./apps/backend/requirements.txt
+RUN pip install --no-cache-dir -r ./apps/backend/requirements.txt
 
 # 复制代码
 COPY . .
 
-# 从前端构建产物目录复制到 frontend/dist
-COPY --from=frontend-builder /frontend/dist ./frontend/dist
+# 从前端构建产物目录复制到 apps/web/dist
+COPY --from=web-builder /repo/apps/web/dist ./apps/web/dist
 
 # 创建数据目录
 RUN mkdir -p data/photos_frontend photos
@@ -37,4 +37,4 @@ EXPOSE 8000
 HEALTHCHECK CMD curl --fail http://localhost:8000/health || exit 1
 
 # 启动命令
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "backend.main:app", "--app-dir", "apps", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

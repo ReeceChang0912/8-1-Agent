@@ -5,8 +5,9 @@ FastAPI 后端服务 - 模块化路由版
 import sys
 from pathlib import Path
 _backend_dir = str(Path(__file__).parent)
-_project_root = str(Path(__file__).parent.parent)
-sys.path = [_project_root, _backend_dir] + sys.path
+_apps_dir = str(Path(__file__).parent.parent)
+_project_root = str(Path(__file__).parent.parent.parent)
+sys.path = [_project_root, _apps_dir, _backend_dir] + sys.path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +19,7 @@ from family_agent.family_auth import FamilyAuthManager
 from family_agent.database import DatabaseManager
 
 # 导入路由模块
-from routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench, finance, memory
+from backend.routers import auth, chat, members, shopping, schedule, photos, knowledge, skills, smarthome, tasks, stats, notifications, workbench, finance, memory, modules, life_modules
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -127,6 +128,8 @@ app.include_router(notifications.router, prefix="/api", tags=["推送通知"])
 app.include_router(workbench.router, prefix="/api", tags=["工作台"])
 app.include_router(finance.router, prefix="/api", tags=["家庭财务"])
 app.include_router(memory.router, prefix="/api", tags=["记忆管理"])
+app.include_router(modules.router, prefix="/api", tags=["平台模块"])
+app.include_router(life_modules.router, prefix="/api", tags=["生活模块"])
 
 
 # ===== 根路径 =====
@@ -156,7 +159,7 @@ else:
     logger.warning("️ 照片目录不存在，跳过静态文件挂载")
 
 # 挂载前端构建产物（生产环境）
-frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+frontend_dist = Path(__file__).parent.parent / "web" / "dist"
 if frontend_dist.exists():
 
     # Vite 构建的静态资源（带 hash，可直接缓存）
@@ -176,7 +179,7 @@ if frontend_dist.exists():
 
     logger.info("✅ 前端静态文件已挂载")
 else:
-    logger.warning("⚠️ 前端构建产物不存在（frontend/dist），请运行: cd frontend && npm run build")
+    logger.warning("⚠️ 前端构建产物不存在（apps/web/dist），请运行: cd apps/web && npm run build")
 
 
 if __name__ == "__main__":

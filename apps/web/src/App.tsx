@@ -33,6 +33,11 @@ import MCPPage from './pages/MCPPage'
 import StatsPage from './pages/StatsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import FinancePage from './pages/FinancePage'
+import ModulesPage from './pages/ModulesPage'
+import WeddingPage from './pages/WeddingPage'
+import InsurancePage from './pages/InsurancePage'
+import VehiclePage from './pages/VehiclePage'
+import FitnessPage from './pages/FitnessPage'
 import MemoryPage from './pages/MemoryPage'
 import LoginPage from './pages/LoginPage'
 import axios from 'axios'
@@ -54,6 +59,11 @@ const PAGE_ROUTES: Record<string, string> = {
   stats: '/stats',
   notifications: '/notifications',
   finance: '/finance',
+  modules: '/modules',
+  wedding: '/modules/wedding',
+  insurance: '/modules/insurance',
+  vehicle: '/modules/vehicle',
+  fitness: '/modules/fitness',
 }
 
 const ROUTE_TO_KEY: Record<string, string> = {}
@@ -159,6 +169,7 @@ const App: React.FC = () => {
     { key: 'smarthome', icon: <HomeOutlined />, label: '智能家居' },
     { key: 'mcp', icon: <ApiOutlined />, label: 'MCP协议' },
     { key: 'finance', icon: <WalletOutlined />, label: '家庭财务' },
+    { key: 'modules', icon: <AppstoreOutlined />, label: '模块中心' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
     { 
       key: 'notifications', 
@@ -199,6 +210,16 @@ const App: React.FC = () => {
         return <StatsPage />
       case 'finance':
         return <FinancePage />
+      case 'modules':
+        return <ModulesPage />
+      case 'wedding':
+        return <WeddingPage />
+      case 'insurance':
+        return <InsurancePage />
+      case 'vehicle':
+        return <VehiclePage />
+      case 'fitness':
+        return <FitnessPage />
       case 'notifications':
         return <NotificationsPage />
       default:

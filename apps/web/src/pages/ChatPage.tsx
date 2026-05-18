@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip } from 'antd'
+import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider } from 'antd'
 import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined } from '@ant-design/icons'
-import { chatAPI } from '../services/api'
+import { chatAPI, lifeModulesAPI, financeAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import ReactMarkdown from 'react-markdown'
@@ -10,6 +10,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeHighlight from 'rehype-highlight'
 
 const { TextArea } = Input
+const { Text } = Typography
 
 const getChatWebSocketUrl = (userId: string) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -53,12 +54,25 @@ const ChatPage: React.FC = () => {
   const [connectionMode, setConnectionMode] = useState<'websocket' | 'http'>('http') // 连接模式
   const [showCommands, setShowCommands] = useState(false)
   const [commandFilter, setCommandFilter] = useState('')
+  const [moduleSummary, setModuleSummary] = useState<any>({
+    wedding: null,
+    insurance: null,
+    vehicle: null,
+    fitness: null,
+    finance: null,
+  })
   const inputRef = useRef<any>(null)
 
   const commands = [
     { cmd: '/shopping', desc: '添加购物清单', icon: '🛒', example: '/shopping 牛奶和鸡蛋' },
     { cmd: '/remind', desc: '创建日程提醒', icon: '📅', example: '/remind 明天下午3点开会' },
     { cmd: '/knowledge', desc: '搜索知识库', icon: '📚', example: '/knowledge 高血压注意事项' },
+    { cmd: '/wedding', desc: '查看备婚摘要/列表', icon: '💍', example: '/wedding summary' },
+    { cmd: '/insurance', desc: '查看保险摘要/列表', icon: '🛡️', example: '/insurance list' },
+    { cmd: '/vehicle', desc: '查看车辆摘要/列表', icon: '🚗', example: '/vehicle summary' },
+    { cmd: '/fitness', desc: '查看健身摘要/列表', icon: '🏋️', example: '/fitness list' },
+    { cmd: '/finance', desc: '查看本月财务摘要', icon: '💰', example: '/finance summary' },
+    { cmd: '/memory', desc: '搜索记忆', icon: '🧠', example: '/memory 车辆保养' },
     { cmd: '/photo', desc: '上传照片', icon: '📸', example: '/photo' },
     { cmd: '/help', desc: '查看所有指令', icon: '📋', example: '/help' },
   ]
@@ -93,7 +107,30 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     loadSessions()
+    loadModuleSummary()
   }, [])
+
+  const loadModuleSummary = async () => {
+    try {
+      const now = new Date()
+      const [wedding, insurance, vehicle, fitness, finance] = await Promise.all([
+        lifeModulesAPI.wedding.stats(familyId),
+        lifeModulesAPI.insurance.stats(familyId),
+        lifeModulesAPI.vehicle.stats(familyId),
+        lifeModulesAPI.fitness.stats(familyId),
+        financeAPI.getSummary(now.getFullYear(), now.getMonth() + 1),
+      ])
+      setModuleSummary({
+        wedding: wedding.data,
+        insurance: insurance.data,
+        vehicle: vehicle.data,
+        fitness: fitness.data,
+        finance: finance.data,
+      })
+    } catch (error) {
+      console.warn('加载聊天上下文摘要失败', error)
+    }
+  }
 
   useEffect(() => {
     if (activeSessionId) {
@@ -257,12 +294,15 @@ const ChatPage: React.FC = () => {
           }
           setMessages(prev => [...prev, assistantMessage])
           // 检测日程创建成功
-          if (fullResponse.includes('已添加到日程安排')) {
-            message.success('📅 已添加到日程管理，快去查看吧！')
-          }
-          setStreamingMessage('')
-          setIsStreaming(false)
-          setLoading(false)
+        if (fullResponse.includes('已添加到日程安排')) {
+          message.success('📅 已添加到日程管理，快去查看吧！')
+        }
+        if (/已新增|已添加到购物清单|财务概览|备婚概览|保险概览|车辆概览|健身概览/.test(fullResponse)) {
+          loadModuleSummary()
+        }
+        setStreamingMessage('')
+        setIsStreaming(false)
+        setLoading(false)
           refreshSessionsSoon()
         }
       }
@@ -405,6 +445,9 @@ const ChatPage: React.FC = () => {
         if (respText.includes('已添加到日程安排')) {
           message.success('📅 已添加到日程管理，快去查看吧！')
         }
+        if (/已新增|已添加到购物清单|财务概览|备婚概览|保险概览|车辆概览|健身概览/.test(respText)) {
+          loadModuleSummary()
+        }
         refreshSessionsSoon()
       } catch (error) {
         message.error('发送消息失败')
@@ -446,6 +489,10 @@ const ChatPage: React.FC = () => {
     { icon: <ClockCircleOutlined />, label: '创建提醒', text: '/remind 明天下午3点开会' },
     { icon: <ShoppingCartOutlined />, label: '添加购物', text: '/shopping 牛奶和鸡蛋' },
     { icon: <BookOutlined />, label: '搜索知识', text: '/knowledge 高血压注意事项' },
+    { icon: <MessageOutlined />, label: '看备婚', text: '/wedding summary' },
+    { icon: <MessageOutlined />, label: '看保险', text: '/insurance summary' },
+    { icon: <MessageOutlined />, label: '看车辆', text: '/vehicle summary' },
+    { icon: <MessageOutlined />, label: '看健身', text: '/fitness summary' },
     { icon: <PictureOutlined />, label: '上传照片', action: 'upload' },
   ]
 
@@ -511,6 +558,12 @@ const ChatPage: React.FC = () => {
           display: flex;
           flex-direction: column;
         }
+        .chat-context-sidebar {
+          width: 300px;
+          flex: 0 0 300px;
+          display: flex;
+          flex-direction: column;
+        }
         .session-card {
           border: 1px solid transparent;
           border-radius: 8px;
@@ -528,6 +581,7 @@ const ChatPage: React.FC = () => {
         @media (max-width: 992px) {
           .chat-page-container { height: auto !important; flex-direction: column; }
           .chat-session-sidebar { width: 100%; flex-basis: auto; max-height: 280px; }
+          .chat-context-sidebar { width: 100%; flex-basis: auto; }
           .chat-main-panel { min-height: 620px; }
           .message-bubble { max-width: 85vw !important; }
         }
@@ -880,10 +934,80 @@ const ChatPage: React.FC = () => {
         </div>
 
         <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-          💡 输入 <span style={{ color: '#1890ff', fontWeight: 600 }}>/</span> 使用指令快速操作；直接描述需求我会先询问确认
+          💡 输入 <span style={{ color: '#1890ff', fontWeight: 600 }}>/</span> 使用指令快速操作；现在也能在对话里直接查看备婚、保险、车辆、健身和财务摘要
         </div>
       </Card>
       </div>
+
+      <Card
+        className="chat-context-sidebar"
+        title={<Space><MessageOutlined /><span>家庭上下文</span></Space>}
+        extra={<Button size="small" type="text" onClick={loadModuleSummary}>刷新</Button>}
+        bodyStyle={{ padding: 12, overflow: 'auto' }}
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>备婚</Text>
+              <Button size="small" type="link" onClick={() => setInputValue('/wedding summary')}>查看</Button>
+            </Space>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+              待办 {moduleSummary.wedding?.todo_count || 0} · 预算 ¥{Number(moduleSummary.wedding?.budget_total || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>保险</Text>
+              <Button size="small" type="link" onClick={() => setInputValue('/insurance summary')}>查看</Button>
+            </Space>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+              保单 {moduleSummary.insurance?.policy_count || 0} · 理赔 {moduleSummary.insurance?.claim_count || 0}
+            </div>
+          </Card>
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>车辆</Text>
+              <Button size="small" type="link" onClick={() => setInputValue('/vehicle summary')}>查看</Button>
+            </Space>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+              档案 {moduleSummary.vehicle?.vehicle_count || 0} · 费用 ¥{Number(moduleSummary.vehicle?.expense_total || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>健身</Text>
+              <Button size="small" type="link" onClick={() => setInputValue('/fitness summary')}>查看</Button>
+            </Space>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+              训练 {moduleSummary.fitness?.workout_count || 0} · 体重 {moduleSummary.fitness?.avg_weight || 0}kg
+            </div>
+          </Card>
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>财务</Text>
+              <Button size="small" type="link" onClick={() => setInputValue('/finance summary')}>查看</Button>
+            </Space>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+              收入 ¥{Number(moduleSummary.finance?.total_income || 0).toLocaleString()} · 支出 ¥{Number(moduleSummary.finance?.total_expense || 0).toLocaleString()}
+            </div>
+          </Card>
+
+          <Divider style={{ margin: '4px 0' }} />
+
+          <Card size="small" style={{ borderRadius: 8 }}>
+            <Text strong>顺手可发</Text>
+            <Space direction="vertical" size={6} style={{ width: '100%', marginTop: 8 }}>
+              <Button block onClick={() => setInputValue('帮我加一个车险续保提醒')}>加车险续保提醒</Button>
+              <Button block onClick={() => setInputValue('帮我记一条今晚力量训练 45分钟 320kcal')}>记训练</Button>
+              <Button block onClick={() => setInputValue('看看这个月财务情况')}>看本月财务</Button>
+            </Space>
+          </Card>
+        </Space>
+      </Card>
 
       <Modal
         title="重命名会话"

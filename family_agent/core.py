@@ -165,7 +165,7 @@ class FamilyAgentCore:
 
         # 2. 检查是否是斜杠指令（直接执行，无需确认）
         if message.startswith('/'):
-            return self._handle_slash_command(message, user_id)
+            return self._handle_slash_command(message, user_id, family_id=family_id)
 
         # 3. 检查是否有待确认的操作
         logger.info(f"[确认流程] user_id={user_id}, message={message}")
@@ -232,6 +232,20 @@ class FamilyAgentCore:
         intent_result = self.task_executor.intent_recognizer.recognize_intent(message)
         logger.info(f"[确认流程] 意图识别结果: {intent_result['intent']}")
         if intent_result['intent'] != 'chat':
+            direct_intents = {
+                'query_wedding', 'query_insurance', 'query_vehicle', 'query_fitness', 'query_finance'
+            }
+            if intent_result['intent'] in direct_intents:
+                response = self.task_executor.execute(message, user_id, family_id=family_id)
+                if response:
+                    self.memory_manager.remember_conversation_turn(
+                        user_message="",
+                        assistant_response=response,
+                        user_id=user_id,
+                        family_id=family_id,
+                        emotion=self._last_emotion,
+                    )
+                    return response
             # 检测到意图，先询问确认
             intent = intent_result['intent']
             confirm_msg = self._build_confirmation_message(intent, message)
@@ -242,6 +256,17 @@ class FamilyAgentCore:
                 'intent_result': intent_result
             }
             return confirm_msg
+
+        module_response = self._handle_module_query(message, family_id=family_id)
+        if module_response:
+            self.memory_manager.remember_conversation_turn(
+                user_message="",
+                assistant_response=module_response,
+                user_id=user_id,
+                family_id=family_id,
+                emotion=self._last_emotion,
+            )
+            return module_response
 
         # 8. 构建会话记忆上下文：近期对话 + 相关长期记忆 + 工作记忆
         memory_context = self.memory_manager.build_chat_context(
@@ -286,7 +311,7 @@ class FamilyAgentCore:
 
         return response
 
-    def _handle_slash_command(self, message: str, user_id: str = None) -> str:
+    def _handle_slash_command(self, message: str, user_id: str = None, family_id: str = None) -> str:
         """处理斜杠指令（直接执行，无需确认）"""
         parts = message.strip().split(maxsplit=1)
         cmd = parts[0].lower()
@@ -299,7 +324,7 @@ class FamilyAgentCore:
                     "  `/shopping 牛奶和鸡蛋`\n"
                     "  `/shopping 一袋大米`"
                 )
-            return self.task_executor._handle_add_shopping_item(f"买{args}", {}, family_id=None)
+            return self.task_executor._handle_add_shopping_item(f"买{args}", {}, family_id=family_id)
         elif cmd == '/remind':
             if not args:
                 return (
@@ -307,7 +332,7 @@ class FamilyAgentCore:
                     "  `/remind 明天下午3点开会`\n"
                     "  `/remind 周五买菜`"
                 )
-            return self.task_executor._handle_create_reminder(f"提醒我{args}", {}, family_id=None)
+            return self.task_executor._handle_create_reminder(f"提醒我{args}", {}, family_id=family_id)
         elif cmd == '/knowledge':
             if not args:
                 return (
@@ -318,12 +343,30 @@ class FamilyAgentCore:
             return self.task_executor._handle_search_knowledge(f"查询{args}", {})
         elif cmd == '/photo':
             return "📸 请在聊天框中点击上传按钮选择照片，我会自动分析并保存到照片记忆中!"
+        elif cmd == '/wedding':
+            return self._handle_wedding_command(args, family_id=family_id)
+        elif cmd == '/insurance':
+            return self._handle_insurance_command(args, family_id=family_id)
+        elif cmd == '/vehicle':
+            return self._handle_vehicle_command(args, family_id=family_id)
+        elif cmd == '/fitness':
+            return self._handle_fitness_command(args, family_id=family_id)
+        elif cmd == '/finance':
+            return self._handle_finance_command(args)
+        elif cmd == '/memory':
+            return self._handle_memory_command(args, user_id=user_id, family_id=family_id)
         elif cmd == '/help':
             return (
                 "📋 **可用指令:**\n"
                 "  `/shopping <物品>` - 添加购物清单\n"
                 "  `/remind <内容>` - 创建日程提醒\n"
                 "  `/knowledge <问题>` - 搜索知识库\n"
+                "  `/wedding list` - 查看备婚事项\n"
+                "  `/insurance list` - 查看保险记录\n"
+                "  `/vehicle list` - 查看车辆记录\n"
+                "  `/fitness list` - 查看健身记录\n"
+                "  `/finance summary` - 查看本月财务摘要\n"
+                "  `/memory <关键词>` - 搜索记忆\n"
                 "  `/photo` - 上传照片\n"
                 "  `/help` - 显示此帮助\n\n"
                 "💡 **普通聊天**时，如果检测到相关意图，我会先询问你确认再执行。"
@@ -331,11 +374,173 @@ class FamilyAgentCore:
         else:
             return f"未知指令: {cmd}\n输入 `/help` 查看可用指令列表。"
 
+    def _handle_module_query(self, message: str, family_id: str = None) -> Optional[str]:
+        if not self.db:
+            return None
+
+        text = (message or "").strip()
+        if not text:
+            return None
+
+        query_words = ('查看', '看看', '查询', '列出', '统计', '总结', '汇总', '情况', '进度')
+
+        if '备婚' in text and any(word in text for word in query_words):
+            return self._handle_wedding_command('summary', family_id=family_id)
+        if ('保险' in text or '保单' in text) and any(word in text for word in query_words):
+            return self._handle_insurance_command('summary', family_id=family_id)
+        if ('车辆' in text or '保养' in text or '车' in text) and any(word in text for word in query_words):
+            return self._handle_vehicle_command('summary', family_id=family_id)
+        if ('健身' in text or '训练' in text or '体重' in text or '饮食' in text) and any(word in text for word in query_words):
+            return self._handle_fitness_command('summary', family_id=family_id)
+        if ('财务' in text or '收支' in text or '账单' in text) and any(word in text for word in query_words):
+            return self._handle_finance_command('summary')
+        return None
+
+    def _handle_wedding_command(self, args: str, family_id: str = None) -> str:
+        if not self.db:
+            return "备婚模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_wedding_items(family_id=family_id or "")
+        if action.startswith('add '):
+            raw = action[4:].strip()
+            parts = [part.strip() for part in raw.split('|')]
+            if len(parts) < 2:
+                return "用法示例：`/wedding add todo|确定伴手礼名单|我|2026-06-01`"
+            item_type = parts[0]
+            title = parts[1]
+            owner = parts[2] if len(parts) > 2 else ""
+            item_date = parts[3] if len(parts) > 3 else ""
+            self.db.add_wedding_item(item_type=item_type, title=title, owner=owner, item_date=item_date, family_id=family_id or "")
+            return f"已新增备婚事项：{title}"
+        if action == 'list':
+            if not items:
+                return "当前还没有备婚记录。"
+            lines = [f"- {item.get('title')} | {item.get('item_type')} | {item.get('status')}" for item in items[:8]]
+            return "备婚记录：\n" + "\n".join(lines)
+        budget_total = sum(float(item.get('planned_amount') or 0) for item in items if item.get('item_type') == 'budget')
+        spent_total = sum(float(item.get('amount') or 0) for item in items if item.get('item_type') == 'budget')
+        todo_count = sum(1 for item in items if item.get('item_type') == 'todo' and item.get('status') != 'done')
+        return (
+            f"备婚概览：\n"
+            f"- 总事项：{len(items)}\n"
+            f"- 待办：{todo_count}\n"
+            f"- 预算总额：¥{budget_total:.0f}\n"
+            f"- 已支付：¥{spent_total:.0f}\n"
+            f"- 继续查看可用 `/wedding list`"
+        )
+
+    def _handle_insurance_command(self, args: str, family_id: str = None) -> str:
+        if not self.db:
+            return "保险模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_insurance_policies(family_id=family_id or "")
+        if action.startswith('add '):
+            name = action[4:].strip()
+            if not name:
+                return "用法示例：`/insurance add 重疾险`"
+            self.db.add_insurance_policy(name=name, family_id=family_id or "")
+            return f"已新增保险记录：{name}"
+        if action == 'list':
+            if not items:
+                return "当前还没有保险记录。"
+            lines = [f"- {item.get('name') or item.get('title')} | {item.get('record_type')} | {item.get('status')}" for item in items[:8]]
+            return "保险记录：\n" + "\n".join(lines)
+        policies = [item for item in items if (item.get('record_type') or 'policy') == 'policy']
+        claims = [item for item in items if item.get('record_type') == 'claim']
+        return (
+            f"保险概览：\n"
+            f"- 保单数：{len(policies)}\n"
+            f"- 理赔事项：{len(claims)}\n"
+            f"- 年保费：¥{sum(float(item.get('premium') or 0) for item in policies):.0f}\n"
+            f"- 继续查看可用 `/insurance list`"
+        )
+
+    def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:
+        if not self.db:
+            return "车辆模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_vehicle_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/vehicle add 本月保养`"
+            self.db.add_vehicle_record(record_type='service', title=title, family_id=family_id or "")
+            return f"已新增车辆记录：{title}"
+        if action == 'list':
+            if not items:
+                return "当前还没有车辆记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('status') or '-'}" for item in items[:8]]
+            return "车辆记录：\n" + "\n".join(lines)
+        return (
+            f"车辆概览：\n"
+            f"- 车辆档案：{sum(1 for item in items if item.get('record_type') == 'vehicle')}\n"
+            f"- 保养记录：{sum(1 for item in items if item.get('record_type') == 'service')}\n"
+            f"- 费用合计：¥{sum(float(item.get('amount') or 0) for item in items if item.get('record_type') == 'expense'):.0f}\n"
+            f"- 继续查看可用 `/vehicle list`"
+        )
+
+    def _handle_fitness_command(self, args: str, family_id: str = None) -> str:
+        if not self.db:
+            return "健身模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_fitness_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/fitness add 力量训练`"
+            self.db.add_fitness_record(record_type='workout', title=title, family_id=family_id or "")
+            return f"已新增健身记录：{title}"
+        if action == 'list':
+            if not items:
+                return "当前还没有健身记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('record_date') or '-'}" for item in items[:8]]
+            return "健身记录：\n" + "\n".join(lines)
+        metrics = [item for item in items if item.get('record_type') == 'metric']
+        avg_weight = sum(float(item.get('weight') or 0) for item in metrics) / len(metrics) if metrics else 0
+        return (
+            f"健身概览：\n"
+            f"- 训练记录：{sum(1 for item in items if item.get('record_type') == 'workout')}\n"
+            f"- 身体记录：{len(metrics)}\n"
+            f"- 平均体重：{avg_weight:.1f} kg\n"
+            f"- 饮食记录：{sum(1 for item in items if item.get('record_type') == 'meal')}\n"
+            f"- 继续查看可用 `/fitness list`"
+        )
+
+    def _handle_finance_command(self, args: str) -> str:
+        if not self.db:
+            return "财务模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        if action not in ('summary', 'month', ''):
+            return "当前支持：`/finance summary`"
+        from datetime import datetime
+        now = datetime.now()
+        summary = self.db.get_monthly_summary(now.year, now.month)
+        return (
+            f"{now.year}年{now.month}月财务概览：\n"
+            f"- 收入：¥{summary.get('total_income', 0):.2f}\n"
+            f"- 支出：¥{summary.get('total_expense', 0):.2f}\n"
+            f"- 结余：¥{summary.get('balance', 0):.2f}"
+        )
+
+    def _handle_memory_command(self, args: str, user_id: str = None, family_id: str = None) -> str:
+        query = (args or '').strip()
+        if not query:
+            return "用法示例：`/memory 车辆保养`"
+        items = self.memory_manager.list_memories(query=query, limit=8, user_id=user_id, family_id=family_id)
+        if not items:
+            return f"没有找到和“{query}”相关的记忆。"
+        lines = [f"- {item.get('content', '')[:80]}" for item in items[:8]]
+        return "相关记忆：\n" + "\n".join(lines)
+
     def _build_confirmation_message(self, intent: str, message: str) -> str:
         """构建确认询问消息"""
         prompts = {
             'create_reminder': f"📅 我检测到你想创建日程提醒，请确认是否执行？(是/否)",
             'add_shopping_item': f"🛒 我检测到你想添加购物清单，请确认是否执行？(是/否)",
+            'add_wedding_item': f"💍 我检测到你想新增备婚事项，请确认是否执行？(是/否)",
+            'add_insurance_record': f"🛡️ 我检测到你想新增保险记录，请确认是否执行？(是/否)",
+            'add_vehicle_record': f"🚗 我检测到你想新增车辆记录，请确认是否执行？(是/否)",
+            'add_fitness_record': f"🏋️ 我检测到你想新增健身记录，请确认是否执行？(是/否)",
             'search_knowledge': f"📚 我检测到你想搜索知识库，请确认是否执行？(是/否)",
             'upload_photo': f"📸 我检测到你想上传照片，请确认是否执行？(是/否)",
             'query_member': f"👤 我检测到你想查询家庭成员信息，请确认是否执行？(是/否)",

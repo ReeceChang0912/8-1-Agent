@@ -303,6 +303,86 @@ class DatabaseManager:
                 )
             """)
 
+            # 业务模块表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS wedding_items (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    item_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    owner TEXT DEFAULT '',
+                    planned_amount NUMERIC(12,2) DEFAULT 0,
+                    amount NUMERIC(12,2) DEFAULT 0,
+                    status TEXT DEFAULT 'todo',
+                    item_date TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE wedding_items ADD COLUMN IF NOT EXISTS planned_amount NUMERIC(12,2) DEFAULT 0")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS insurance_policies (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT DEFAULT 'policy',
+                    name TEXT NOT NULL,
+                    title TEXT DEFAULT '',
+                    holder TEXT NOT NULL,
+                    company TEXT DEFAULT '',
+                    coverage TEXT DEFAULT '',
+                    premium NUMERIC(12,2) DEFAULT 0,
+                    amount NUMERIC(12,2) DEFAULT 0,
+                    renew_date TEXT DEFAULT '',
+                    status TEXT DEFAULT '有效',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS record_type TEXT DEFAULT 'policy'")
+            cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS title TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS note TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2) DEFAULT 0")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS vehicle_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    plate TEXT DEFAULT '',
+                    model TEXT DEFAULT '',
+                    mileage NUMERIC(12,2) DEFAULT 0,
+                    amount NUMERIC(12,2) DEFAULT 0,
+                    record_date TEXT DEFAULT '',
+                    status TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE vehicle_records ADD COLUMN IF NOT EXISTS note TEXT DEFAULT ''")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS fitness_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    record_date TEXT DEFAULT '',
+                    duration NUMERIC(12,2) DEFAULT 0,
+                    calories NUMERIC(12,2) DEFAULT 0,
+                    protein NUMERIC(12,2) DEFAULT 0,
+                    weight NUMERIC(12,2) DEFAULT 0,
+                    body_fat NUMERIC(12,2) DEFAULT 0,
+                    waist NUMERIC(12,2) DEFAULT 0,
+                    status TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE fitness_records ADD COLUMN IF NOT EXISTS protein NUMERIC(12,2) DEFAULT 0")
+
     # ===== 剩下的方法与之前一致 =====
     # （成员管理、购物清单、日程、聊天历史、任务、照片、通知等）
 
@@ -1039,3 +1119,159 @@ class DatabaseManager:
                 else:
                     month_map[key]["expense"] = d['total']
             return list(month_map.values())
+
+    def add_wedding_item(self, item_type: str, title: str, description: str = "",
+                         owner: str = "", planned_amount: float = 0, amount: float = 0, status: str = "todo",
+                         item_date: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO wedding_items (family_id, item_type, title, description, owner, planned_amount, amount, status, item_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", item_type, title, description, owner, planned_amount, amount, status, item_date))
+            return cursor.fetchone()["id"]
+
+    def get_wedding_items(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM wedding_items
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_wedding_item(self, item_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [item_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE wedding_items
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_wedding_item(self, item_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM wedding_items WHERE id = %s AND family_id = %s', (item_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_insurance_policy(self, name: str, holder: str = "", company: str = "",
+                             coverage: str = "", premium: float = 0, amount: float = 0,
+                             renew_date: str = "", status: str = "有效",
+                             record_type: str = "policy", title: str = "",
+                             note: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO insurance_policies (family_id, record_type, name, title, holder, company, coverage, premium, amount, renew_date, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, name, title, holder, company, coverage, premium, amount, renew_date, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_insurance_policies(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM insurance_policies
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_insurance_policy(self, policy_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [policy_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE insurance_policies
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_insurance_policy(self, policy_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM insurance_policies WHERE id = %s AND family_id = %s', (policy_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_vehicle_record(self, record_type: str, title: str, plate: str = "",
+                           model: str = "", mileage: float = 0, amount: float = 0,
+                           record_date: str = "", status: str = "", note: str = "",
+                           family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO vehicle_records (family_id, record_type, title, plate, model, mileage, amount, record_date, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, title, plate, model, mileage, amount, record_date, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_vehicle_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM vehicle_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_vehicle_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE vehicle_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_vehicle_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM vehicle_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_fitness_record(self, record_type: str, title: str, record_date: str = "",
+                           duration: float = 0, calories: float = 0, protein: float = 0, weight: float = 0,
+                           body_fat: float = 0, waist: float = 0, status: str = "",
+                           note: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO fitness_records (family_id, record_type, title, record_date, duration, calories, protein, weight, body_fat, waist, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, title, record_date, duration, calories, protein, weight, body_fat, waist, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_fitness_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM fitness_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_fitness_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE fitness_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_fitness_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM fitness_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
+            return cursor.rowcount > 0
