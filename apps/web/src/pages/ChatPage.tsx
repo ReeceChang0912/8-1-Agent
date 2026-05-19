@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined, CopyOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider, Collapse, Badge } from 'antd'
+import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined, CopyOutlined, ReloadOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
@@ -35,6 +35,15 @@ interface ChatSession {
   last_message?: string
 }
 
+const safeParseJson = <T,>(value: string | null, fallback: T): T => {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return fallback
+  }
+}
+
 const ChatPage: React.FC = () => {
   const userId = localStorage.getItem('member_name') || 'anonymous'
   const familyId = localStorage.getItem('family_id') || ''
@@ -46,6 +55,9 @@ const ChatPage: React.FC = () => {
   const [renamingSession, setRenamingSession] = useState<ChatSession | null>(null)
   const [renameTitle, setRenameTitle] = useState('')
   const [sessionFilter, setSessionFilter] = useState('')
+  const [pinnedSessionIds, setPinnedSessionIds] = useState<string[]>(() =>
+    safeParseJson<string[]>(localStorage.getItem(`chat:pins:${userId}:${familyId}`), []),
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -92,12 +104,34 @@ const ChatPage: React.FC = () => {
 
   const filteredSessions = useMemo(() => {
     const keyword = sessionFilter.trim().toLowerCase()
-    if (!keyword) return sessions
-    return sessions.filter(session => {
+    const matched = !keyword ? sessions : sessions.filter(session => {
       const haystack = `${session.title || ''} ${session.last_message || ''}`.toLowerCase()
       return haystack.includes(keyword)
     })
-  }, [sessionFilter, sessions])
+    const pinnedSet = new Set(pinnedSessionIds)
+    return matched
+      .map(session => {
+        const updatedAtMs = new Date(session.updated_at || session.created_at || 0).getTime() || 0
+        const seenAtRaw = localStorage.getItem(`chat:seen:${userId}:${familyId}:${session.session_id}`)
+        const seenAtMs = seenAtRaw ? new Date(seenAtRaw).getTime() : 0
+        return {
+          session,
+          updatedAtMs,
+          isPinned: pinnedSet.has(session.session_id),
+          isUnread: session.session_id !== activeSessionId && updatedAtMs > seenAtMs,
+        }
+      })
+      .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAtMs - a.updatedAtMs)
+  }, [activeSessionId, familyId, pinnedSessionIds, sessionFilter, sessions, userId])
+
+  const persistPinnedSessions = (nextIds: string[]) => {
+    setPinnedSessionIds(nextIds)
+    localStorage.setItem(`chat:pins:${userId}:${familyId}`, JSON.stringify(nextIds))
+  }
+
+  const markSessionSeen = (sessionId: string, seenAt: string) => {
+    localStorage.setItem(`chat:seen:${userId}:${familyId}:${sessionId}`, seenAt)
+  }
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -198,6 +232,8 @@ const ChatPage: React.FC = () => {
       setStreamingMessage('')
       setIsStreaming(false)
       setLoading(false)
+      const session = sessions.find(item => item.session_id === sessionId)
+      markSessionSeen(sessionId, session?.updated_at || new Date().toISOString())
     } catch (error) {
       message.error('加载会话历史失败')
     }
@@ -227,6 +263,8 @@ const ChatPage: React.FC = () => {
     setSearchParams({ session: sessionId }, { replace: true })
     setInputValue('')
     setAttachedFiles([])
+    const session = sessions.find(item => item.session_id === sessionId)
+    markSessionSeen(sessionId, session?.updated_at || new Date().toISOString())
   }
 
   const openRenameModal = (session: ChatSession) => {
@@ -298,6 +336,13 @@ const ChatPage: React.FC = () => {
   const handleRefreshCurrentSession = async () => {
     if (!activeSessionId) return
     await Promise.all([loadSessions(), loadSessionHistory(activeSessionId), loadModuleSummary()])
+  }
+
+  const togglePinSession = (sessionId: string) => {
+    const nextIds = pinnedSessionIds.includes(sessionId)
+      ? pinnedSessionIds.filter(id => id !== sessionId)
+      : [sessionId, ...pinnedSessionIds]
+    persistPinnedSessions(nextIds)
   }
 
   // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
@@ -659,7 +704,7 @@ const ChatPage: React.FC = () => {
             loading={sessionsLoading}
             dataSource={filteredSessions}
             split={false}
-            renderItem={(session) => (
+            renderItem={({ session, isPinned, isUnread }) => (
               <div
                 className={`session-card ${session.session_id === activeSessionId ? 'active' : ''}`}
                 onClick={() => handleSelectSession(session.session_id)}
@@ -669,10 +714,15 @@ const ChatPage: React.FC = () => {
                   <MessageOutlined style={{ color: session.session_id === activeSessionId ? '#1677ff' : '#8c8c8c', marginTop: 3 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: '#1f2937' }}>
-                        {session.title || '新对话'}
+                      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {isUnread && <Badge status="processing" />}
+                        <span>{session.title || '新对话'}</span>
+                        {isPinned && <Tag color="gold" style={{ marginInlineEnd: 0 }}>置顶</Tag>}
                       </div>
                       <div className="session-actions" onClick={(event) => event.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
+                        <Tooltip title={isPinned ? '取消置顶' : '置顶'}>
+                          <Button size="small" type="text" icon={isPinned ? <StarFilled /> : <StarOutlined />} onClick={() => togglePinSession(session.session_id)} />
+                        </Tooltip>
                         <Tooltip title="重命名">
                           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openRenameModal(session)} />
                         </Tooltip>
@@ -683,6 +733,10 @@ const ChatPage: React.FC = () => {
                     </div>
                     <div style={{ marginTop: 4, color: '#667085', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {session.last_message || '暂无消息'}
+                    </div>
+                    <div style={{ marginTop: 4, color: '#98a2b3', fontSize: 11, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span>更新 {formatSessionTime(session.updated_at || session.created_at)}</span>
+                      {session.updated_at && <span>{new Date(session.updated_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
                     </div>
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#98a2b3', fontSize: 11 }}>
                       <span>{session.message_count || 0} 条消息</span>
@@ -1018,85 +1072,95 @@ const ChatPage: React.FC = () => {
         extra={<Button size="small" type="text" onClick={loadModuleSummary}>刷新</Button>}
         bodyStyle={{ padding: 12, overflow: 'auto' }}
       >
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text strong>备婚</Text>
-              <Button size="small" type="link" onClick={() => navigate('/modules/wedding')}>查看</Button>
-            </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
-              待办 {moduleSummary.wedding?.todo_count || 0} · 预算 ¥{Number(moduleSummary.wedding?.budget_total || 0).toLocaleString()}
-            </div>
-          </Card>
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text strong>保险</Text>
-              <Button size="small" type="link" onClick={() => navigate('/modules/insurance')}>查看</Button>
-            </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
-              保单 {moduleSummary.insurance?.policy_count || 0} · 理赔 {moduleSummary.insurance?.claim_count || 0}
-            </div>
-          </Card>
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text strong>车辆</Text>
-              <Button size="small" type="link" onClick={() => navigate('/modules/vehicle')}>查看</Button>
-            </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
-              档案 {moduleSummary.vehicle?.vehicle_count || 0} · 费用 ¥{Number(moduleSummary.vehicle?.expense_total || 0).toLocaleString()}
-            </div>
-          </Card>
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text strong>健身</Text>
-              <Button size="small" type="link" onClick={() => navigate('/modules/fitness')}>查看</Button>
-            </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
-              训练 {moduleSummary.fitness?.workout_count || 0} · 体重 {moduleSummary.fitness?.avg_weight || 0}kg
-            </div>
-          </Card>
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text strong>财务</Text>
-              <Button size="small" type="link" onClick={() => navigate('/finance')}>查看</Button>
-            </Space>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
-              收入 ¥{Number(moduleSummary.finance?.total_income || 0).toLocaleString()} · 支出 ¥{Number(moduleSummary.finance?.total_expense || 0).toLocaleString()}
-            </div>
-          </Card>
-
-          <Divider style={{ margin: '4px 0' }} />
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Text strong>顺手可发</Text>
-            <Space direction="vertical" size={6} style={{ width: '100%', marginTop: 8 }}>
-              <Button block onClick={() => setInputValue('帮我加一个车险续保提醒')}>加车险续保提醒</Button>
-              <Button block onClick={() => setInputValue('帮我记一条今晚力量训练 45分钟 320kcal')}>记训练</Button>
-              <Button block onClick={() => setInputValue('今天买菜花了 68')}>记支出</Button>
-              <Button block onClick={() => setInputValue('看看这个月财务情况')}>看本月财务</Button>
-            </Space>
-          </Card>
-
-          <Card size="small" style={{ borderRadius: 8 }}>
-            <Text strong>最近记忆</Text>
-            <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 8 }}>
-              {(moduleSummary.memory || []).length > 0 ? (
-                (moduleSummary.memory || []).map((item: any) => (
-                  <div key={item.id} style={{ fontSize: 12, color: '#667085', paddingBottom: 6, borderBottom: '1px solid #f0f0f0' }}>
-                    <Tag color="blue">{item.memory_type}</Tag>
-                    <div style={{ marginTop: 4 }}>{item.content}</div>
-                  </div>
-                ))
-              ) : (
-                <Text type="secondary" style={{ fontSize: 12 }}>还没有可展示的近期记忆</Text>
-              )}
-            </Space>
-          </Card>
-        </Space>
+        <Collapse
+          defaultActiveKey={['modules', 'quick', 'memory']}
+          ghost
+          items={[
+            {
+              key: 'modules',
+              label: '模块联动',
+              children: (
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>备婚</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/wedding')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      待办 {moduleSummary.wedding?.todo_count || 0} · 预算 ¥{Number(moduleSummary.wedding?.budget_total || 0).toLocaleString()}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>保险</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/insurance')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      保单 {moduleSummary.insurance?.policy_count || 0} · 理赔 {moduleSummary.insurance?.claim_count || 0}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>车辆</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/vehicle')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      档案 {moduleSummary.vehicle?.vehicle_count || 0} · 费用 ¥{Number(moduleSummary.vehicle?.expense_total || 0).toLocaleString()}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>健身</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/fitness')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      训练 {moduleSummary.fitness?.workout_count || 0} · 体重 {moduleSummary.fitness?.avg_weight || 0}kg
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>财务</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/finance')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      收入 ¥{Number(moduleSummary.finance?.total_income || 0).toLocaleString()} · 支出 ¥{Number(moduleSummary.finance?.total_expense || 0).toLocaleString()}
+                    </div>
+                  </Card>
+                </Space>
+              ),
+            },
+            {
+              key: 'quick',
+              label: '顺手可发',
+              children: (
+                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                  <Button block onClick={() => setInputValue('帮我加一个车险续保提醒')}>加车险续保提醒</Button>
+                  <Button block onClick={() => setInputValue('帮我记一条今晚力量训练 45分钟 320kcal')}>记训练</Button>
+                  <Button block onClick={() => setInputValue('今天买菜花了 68')}>记支出</Button>
+                  <Button block onClick={() => setInputValue('看看这个月财务情况')}>看本月财务</Button>
+                </Space>
+              ),
+            },
+            {
+              key: 'memory',
+              label: '最近记忆',
+              children: (
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  {(moduleSummary.memory || []).length > 0 ? (
+                    (moduleSummary.memory || []).map((item: any) => (
+                      <div key={item.id} style={{ fontSize: 12, color: '#667085', paddingBottom: 6, borderBottom: '1px solid #f0f0f0' }}>
+                        <Tag color="blue">{item.memory_type}</Tag>
+                        <div style={{ marginTop: 4 }}>{item.content}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <Text type="secondary" style={{ fontSize: 12 }}>还没有可展示的近期记忆</Text>
+                  )}
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Modal
