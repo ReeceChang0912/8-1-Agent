@@ -23,6 +23,7 @@ import WeddingPage from './pages/WeddingPage'
 import InsurancePage from './pages/InsurancePage'
 import VehiclePage from './pages/VehiclePage'
 import FitnessPage from './pages/FitnessPage'
+import DocumentsPage from './pages/DocumentsPage'
 import './styles/responsive.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -51,6 +52,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="modules/insurance" element={<InsurancePage />} />
             <Route path="modules/vehicle" element={<VehiclePage />} />
             <Route path="modules/fitness" element={<FitnessPage />} />
+            <Route path="modules/documents" element={<DocumentsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

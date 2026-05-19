@@ -169,6 +169,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
         return {
             "wedding": None,
             "insurance": None,
+            "documents": None,
             "vehicle": None,
             "fitness": None,
             "finance": None,
@@ -177,8 +178,15 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
 
     from datetime import datetime
     now = datetime.now()
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
     wedding_items = db.get_wedding_items(family_id=family_id)
     insurance_items = db.get_insurance_policies(family_id=family_id)
+    document_items = db.get_document_records(family_id=family_id)
     vehicle_items = db.get_vehicle_records(family_id=family_id)
     fitness_items = db.get_fitness_records(family_id=family_id)
     finance_summary = db.get_monthly_summary(now.year, now.month)
@@ -193,6 +201,18 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
         "insurance": {
             "policy_count": sum(1 for item in insurance_items if (item.get("record_type") or "policy") == "policy"),
             "claim_count": sum(1 for item in insurance_items if item.get("record_type") == "claim"),
+        },
+        "documents": {
+            "total_count": len(document_items),
+            "active_count": sum(1 for item in document_items if not item.get("expiry_date")),
+            "expiring_soon_count": sum(
+                1 for item in document_items
+                if (expiry := parse_date(item.get("expiry_date") or "")) and 0 <= (expiry - now.date()).days <= int(item.get("reminder_days") or 30)
+            ),
+            "expired_count": sum(
+                1 for item in document_items
+                if (expiry := parse_date(item.get("expiry_date") or "")) and expiry < now.date()
+            ),
         },
         "vehicle": {
             "vehicle_count": sum(1 for item in vehicle_items if item.get("record_type") == "vehicle"),

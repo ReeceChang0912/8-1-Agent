@@ -345,6 +345,24 @@ class DatabaseManager:
             cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS note TEXT DEFAULT ''")
             cursor.execute("ALTER TABLE insurance_policies ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2) DEFAULT 0")
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS document_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    doc_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    holder TEXT DEFAULT '',
+                    number TEXT DEFAULT '',
+                    issuer TEXT DEFAULT '',
+                    issue_date TEXT DEFAULT '',
+                    expiry_date TEXT DEFAULT '',
+                    reminder_days INTEGER DEFAULT 30,
+                    status TEXT DEFAULT '有效',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS vehicle_records (
                     id SERIAL PRIMARY KEY,
                     family_id TEXT DEFAULT '',
@@ -1196,6 +1214,45 @@ class DatabaseManager:
     def delete_insurance_policy(self, policy_id: int, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute('DELETE FROM insurance_policies WHERE id = %s AND family_id = %s', (policy_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_document_record(self, doc_type: str, title: str, holder: str = "", number: str = "",
+                            issuer: str = "", issue_date: str = "", expiry_date: str = "",
+                            reminder_days: int = 30, status: str = "有效", note: str = "",
+                            family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO document_records (family_id, doc_type, title, holder, number, issuer, issue_date, expiry_date, reminder_days, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", doc_type, title, holder, number, issuer, issue_date, expiry_date, reminder_days, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_document_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM document_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_document_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE document_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_document_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM document_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_vehicle_record(self, record_type: str, title: str, plate: str = "",

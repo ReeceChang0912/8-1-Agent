@@ -103,6 +103,12 @@ class IntentRecognizer:
             if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_insurance_record', 'confidence': 0.88, 'raw_text': message}
 
+        if any(k in message for k in ['??', '???', '??', '??', '???']):
+            if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
+                return {'intent': 'query_documents', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['??', '??', '???', '???', '???']):
+                return {'intent': 'add_document_record', 'confidence': 0.88, 'raw_text': message}
+
         if any(k in message for k in ['车辆', '保养', '年检']) or ('车' in message and '车险' not in message):
             if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况']):
                 return {'intent': 'query_vehicle', 'confidence': 0.88, 'raw_text': message}
@@ -182,6 +188,12 @@ class TaskExecutor:
 
         elif intent == 'add_insurance_record':
             return self._handle_add_insurance_record(message, family_id=family_id)
+
+        elif intent == 'query_documents':
+            return self._handle_query_documents(message, family_id=family_id)
+
+        elif intent == 'add_document_record':
+            return self._handle_add_document_record(message, family_id=family_id)
 
         elif intent == 'query_vehicle':
             return self._handle_query_vehicle(message, family_id=family_id)

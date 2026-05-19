@@ -347,6 +347,8 @@ class FamilyAgentCore:
             return self._handle_wedding_command(args, family_id=family_id)
         elif cmd == '/insurance':
             return self._handle_insurance_command(args, family_id=family_id)
+        elif cmd == '/documents':
+            return self._handle_documents_command(args, family_id=family_id)
         elif cmd == '/vehicle':
             return self._handle_vehicle_command(args, family_id=family_id)
         elif cmd == '/fitness':
@@ -363,6 +365,7 @@ class FamilyAgentCore:
                 "  `/knowledge <问题>` - 搜索知识库\n"
                 "  `/wedding list` - 查看备婚事项\n"
                 "  `/insurance list` - 查看保险记录\n"
+                "  `/documents list` - 查看证件记录\n"
                 "  `/vehicle list` - 查看车辆记录\n"
                 "  `/fitness list` - 查看健身记录\n"
                 "  `/finance summary` - 查看本月财务摘要\n"
@@ -388,6 +391,8 @@ class FamilyAgentCore:
             return self._handle_wedding_command('summary', family_id=family_id)
         if ('保险' in text or '保单' in text) and any(word in text for word in query_words):
             return self._handle_insurance_command('summary', family_id=family_id)
+        if ('证件' in text or '身份证' in text or '护照' in text or '驾照' in text) and any(word in text for word in query_words):
+            return self._handle_documents_command('summary', family_id=family_id)
         if ('车辆' in text or '保养' in text or '车' in text) and any(word in text for word in query_words):
             return self._handle_vehicle_command('summary', family_id=family_id)
         if ('健身' in text or '训练' in text or '体重' in text or '饮食' in text) and any(word in text for word in query_words):
@@ -453,6 +458,44 @@ class FamilyAgentCore:
             f"- 理赔事项：{len(claims)}\n"
             f"- 年保费：¥{sum(float(item.get('premium') or 0) for item in policies):.0f}\n"
             f"- 继续查看可用 `/insurance list`"
+        )
+
+    def _handle_documents_command(self, args: str, family_id: str = None) -> str:
+        from datetime import datetime
+        if not self.db:
+            return "证件管理模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_document_records(family_id=family_id or "")
+        if action == 'list':
+            if not items:
+                return "当前还没有证件记录。"
+            lines = [f"- {item.get('title')} | {item.get('holder')} | {item.get('expiry_date') or '未设置到期'}" for item in items[:8]]
+            return "证件记录：\n" + "\n".join(lines)
+        expiring_soon = 0
+        expired = 0
+        active = 0
+        today = datetime.now().date()
+        for item in items:
+            try:
+                expiry = datetime.strptime(item.get('expiry_date') or '', "%Y-%m-%d").date()
+            except Exception:
+                expiry = None
+            if not expiry:
+                active += 1
+                continue
+            if expiry < today:
+                expired += 1
+            else:
+                active += 1
+                if (expiry - today).days <= int(item.get('reminder_days') or 30):
+                    expiring_soon += 1
+        return (
+            f"证件概览：\n"
+            f"- 总数：{len(items)}\n"
+            f"- 有效：{active}\n"
+            f"- 临近到期：{expiring_soon}\n"
+            f"- 已失效：{expired}\n"
+            f"- 继续查看可用 `/documents list`"
         )
 
     def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:

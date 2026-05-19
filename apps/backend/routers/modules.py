@@ -80,11 +80,11 @@ MODULES = [
     {
         "id": "documents",
         "title": "证件管理",
-        "status": "planned",
+        "status": "ready",
         "category": "life",
         "description": "身份证、护照、驾照、房产证、到期提醒。",
-        "web_route": "",
-        "miniapp_route": "",
+        "web_route": "/modules/documents",
+        "miniapp_route": "/pages/webview/webview",
         "owner": "product",
     },
     {

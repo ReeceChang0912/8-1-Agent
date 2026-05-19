@@ -53,7 +53,7 @@ const ModulesPage: React.FC = () => {
   }
 
   const recommended = useMemo(() => {
-    const order = ['finance', 'wedding', 'insurance', 'vehicle', 'fitness']
+    const order = ['finance', 'wedding', 'insurance', 'documents', 'vehicle', 'fitness']
     return order.map(id => modules.find(item => item.id === id)).filter(Boolean)
   }, [modules])
 
@@ -120,6 +120,7 @@ const ModulesPage: React.FC = () => {
             <Button size="small" onClick={() => navigate('/finance')}>财务</Button>
             <Button size="small" onClick={() => navigate('/modules/wedding')}>备婚</Button>
             <Button size="small" onClick={() => navigate('/modules/insurance')}>保险</Button>
+            <Button size="small" onClick={() => navigate('/modules/documents')}>证件</Button>
             <Button size="small" onClick={() => navigate('/modules/vehicle')}>车辆</Button>
             <Button size="small" onClick={() => navigate('/modules/fitness')}>健身</Button>
           </Space>

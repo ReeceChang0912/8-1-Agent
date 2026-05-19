@@ -1,5 +1,5 @@
 """
-Life module APIs for wedding, insurance, vehicle and fitness.
+Life module APIs for wedding, insurance, vehicle, fitness and documents.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -63,6 +63,20 @@ class FitnessRecordCreate(BaseModel):
     body_fat: float = 0
     waist: float = 0
     status: str = ""
+    note: str = ""
+    family_id: str = ""
+
+
+class DocumentRecordCreate(BaseModel):
+    doc_type: str
+    title: str
+    holder: str = ""
+    number: str = ""
+    issuer: str = ""
+    issue_date: str = ""
+    expiry_date: str = ""
+    reminder_days: int = 30
+    status: str = "有效"
     note: str = ""
     family_id: str = ""
 
@@ -251,4 +265,71 @@ def fitness_stats(family_id: str = ""):
         "avg_weight": avg_weight,
         "calories_today": calories_today,
         "protein_today": round(sum(float(item.get("protein") or 0) for item in meals), 2),
+    }
+
+
+@router.get("/modules/documents")
+def list_document_records(family_id: str = ""):
+    db = get_db()
+    return {"items": db.get_document_records(family_id=family_id) if db else []}
+
+
+@router.post("/modules/documents")
+def add_document_record(data: DocumentRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": True, "id": db.add_document_record(**data.model_dump())}
+
+
+@router.put("/modules/documents/{record_id}")
+def update_document_record(record_id: int, data: DocumentRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.update_document_record(record_id, **data.model_dump())}
+
+
+@router.delete("/modules/documents/{record_id}")
+def delete_document_record(record_id: int, family_id: str = ""):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.delete_document_record(record_id, family_id=family_id)}
+
+
+@router.get("/modules/documents/stats")
+def document_stats(family_id: str = ""):
+    db = get_db()
+    items = db.get_document_records(family_id=family_id) if db else []
+    today = datetime.now().date()
+
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    expiring_soon = 0
+    expired = 0
+    active = 0
+
+    for item in items:
+        expiry = parse_date(item.get("expiry_date") or "")
+        reminder_days = int(item.get("reminder_days") or 30)
+        if not expiry:
+            active += 1
+            continue
+        if expiry < today:
+            expired += 1
+        else:
+            active += 1
+            if (expiry - today).days <= reminder_days:
+                expiring_soon += 1
+
+    return {
+        "total_count": len(items),
+        "active_count": active,
+        "expiring_soon_count": expiring_soon,
+        "expired_count": expired,
     }

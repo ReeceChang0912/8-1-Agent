@@ -119,6 +119,13 @@ export const lifeModulesAPI = {
     update: (id: number, data: any) => api.put(`/modules/fitness/${id}`, data),
     remove: (id: number, familyId?: string) => api.delete(`/modules/fitness/${id}`, { params: { family_id: familyId } }),
   },
+  documents: {
+    list: (familyId?: string) => api.get('/modules/documents', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/documents/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/documents', data),
+    update: (id: number, data: any) => api.put(`/modules/documents/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/documents/${id}`, { params: { family_id: familyId } }),
+  },
 }
 
 // 知识库
