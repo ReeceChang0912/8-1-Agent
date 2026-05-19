@@ -1,4 +1,9 @@
 <view class="page">
+  <view class="topbar">
+    <view class="topbar-title">模块中心</view>
+    <view class="topbar-action" bindtap="openHome">回主站</view>
+  </view>
+
   <view class="summary">
     <view class="summary-item">
       <text class="num">{{readyCount}}</text>
@@ -10,19 +15,43 @@
     </view>
   </view>
 
-  <view class="module-list">
-    <block wx:for="{{modules}}" wx:key="id">
-      <view class="module-card" bindtap="openModule" data-module="{{item}}">
-        <view class="head">
-          <text class="title">{{item.title}}</text>
-          <text class="status {{item.status}}">{{item.status === 'ready' ? '已上线' : '规划中'}}</text>
+  <view class="section">
+    <view class="section-title">已上线</view>
+    <view class="module-list">
+      <block wx:for="{{readyModules}}" wx:key="id">
+        <view class="module-card" bindtap="openModule" data-module="{{item}}">
+          <view class="head">
+            <text class="title">{{item.title}}</text>
+            <text class="status {{item.status}}">已上线</text>
+          </view>
+          <view class="desc">{{item.description}}</view>
+          <view class="meta">
+            <text>{{item.category}}</text>
+            <text>{{item.owner}}</text>
+          </view>
         </view>
-        <view class="desc">{{item.description}}</view>
-        <view class="meta">
-          <text>{{item.category}}</text>
-          <text>{{item.owner}}</text>
-        </view>
-      </view>
-    </block>
+      </block>
+    </view>
   </view>
+
+  <view class="section">
+    <view class="section-title">规划中</view>
+    <view class="module-list">
+      <block wx:for="{{plannedModules}}" wx:key="id">
+        <view class="module-card muted" bindtap="openModule" data-module="{{item}}">
+          <view class="head">
+            <text class="title">{{item.title}}</text>
+            <text class="status planned">规划中</text>
+          </view>
+          <view class="desc">{{item.description}}</view>
+          <view class="meta">
+            <text>{{item.category}}</text>
+            <text>{{item.owner}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view wx:if="{{!loading && modules.length === 0}}" class="empty">暂无模块</view>
 </view>

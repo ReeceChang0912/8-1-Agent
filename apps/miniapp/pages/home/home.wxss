@@ -1,3 +1,9 @@
+.page {
+  min-height: 100vh;
+  padding: 28rpx;
+  background: linear-gradient(180deg, #f7f8fa 0%, #eef4ff 100%);
+}
+
 .hero {
   padding: 32rpx 0 24rpx;
 }
@@ -43,4 +49,42 @@
   color: #ffffff;
   border-radius: 16rpx;
   font-size: 28rpx;
+}
+
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.shortcut-card {
+  padding: 22rpx;
+  border-radius: 18rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e5e7eb;
+  box-shadow: 0 6rpx 18rpx rgba(15, 23, 42, 0.04);
+}
+
+.shortcut-badge {
+  display: inline-flex;
+  padding: 4rpx 10rpx;
+  margin-bottom: 10rpx;
+  border-radius: 999rpx;
+  background: #e8f1ff;
+  color: #1677ff;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.shortcut-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.shortcut-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #6b7280;
 }

@@ -2,11 +2,19 @@
   <view class="hero">
     <view class="eyebrow">Family Management</view>
     <view class="title">家庭管理系统</view>
-    <view class="desc">聊天、记忆、备婚、保险、车辆、健身，都放在这一套平台里。</view>
+    <view class="desc">聊天、记忆、备婚、保险、车辆、健身，都在一套系统里；Web 版做主工作台，小程序做轻入口。</view>
   </view>
 
   <view class="panel">
-    <view class="panel-title">进入 Web 版</view>
-    <button class="primary" bindtap="goWebView">打开主站</button>
+    <view class="panel-title">快捷入口</view>
+    <view class="shortcut-grid">
+      <block wx:for="{{shortcuts}}" wx:key="route">
+        <view class="shortcut-card" bindtap="goWebView" data-route="{{item.route}}" data-title="{{item.title}}">
+          <view class="shortcut-badge">{{item.title}}</view>
+          <view class="shortcut-title">{{item.title}}</view>
+          <view class="shortcut-desc">{{item.desc}}</view>
+        </view>
+      </block>
+    </view>
   </view>
 </view>
