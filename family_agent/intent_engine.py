@@ -115,6 +115,12 @@ class IntentRecognizer:
             if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_health_record', 'confidence': 0.88, 'raw_text': message}
 
+        if any(k in message for k in ['旅行', '行程', '旅游', '机票', '酒店', '打包', '出行']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
+                return {'intent': 'query_travel', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
+                return {'intent': 'add_travel_record', 'confidence': 0.88, 'raw_text': message}
+
         if any(k in message for k in ['证件', '证照', '身份证', '护照', '驾驶证', '档案']):
             if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
                 return {'intent': 'query_documents', 'confidence': 0.9, 'raw_text': message}
@@ -218,6 +224,12 @@ class TaskExecutor:
 
         elif intent == 'add_health_record':
             return self._handle_add_health_record(message, family_id=family_id)
+
+        elif intent == 'query_travel':
+            return self._handle_query_travel(message, family_id=family_id)
+
+        elif intent == 'add_travel_record':
+            return self._handle_add_travel_record(message, family_id=family_id)
 
         elif intent == 'query_vehicle':
             return self._handle_query_vehicle(message, family_id=family_id)
@@ -417,6 +429,23 @@ class TaskExecutor:
             title = re.sub(r'^(慢病|高血压|糖尿病|慢性病)\s*', '', title).strip() or title
         self.agent.db.add_health_record(record_type=record_type, title=title, family_id=family_id or "")
         return f"✅ 已新增健康记录：{title}（{record_type}）"
+
+    def _handle_query_travel(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细', 'list']) else 'summary'
+        return self.agent._handle_travel_command(action, family_id=family_id)
+
+    def _handle_add_travel_record(self, message: str, family_id: str = None) -> str:
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的旅行记录'
+        record_type = 'itinerary'
+        if any(k in message for k in ['预算', '费用', '花费', '支出']):
+            record_type = 'budget'
+        elif any(k in message for k in ['预订', '订票', '机票', '酒店', '门票']):
+            record_type = 'booking'
+        elif any(k in message for k in ['打包', '行李', '清单']):
+            record_type = 'packing'
+        self.agent.db.add_travel_record(record_type=record_type, title=title, family_id=family_id or "")
+        return f"✅ 已新增旅行记录：{title}（{record_type}）"
 
     def _handle_query_vehicle(self, message: str, family_id: str = None) -> str:
         action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'

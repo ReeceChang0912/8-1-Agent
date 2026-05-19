@@ -53,7 +53,7 @@ const ModulesPage: React.FC = () => {
   }
 
   const recommended = useMemo(() => {
-    const order = ['finance', 'wedding', 'housing', 'health', 'insurance', 'documents', 'vehicle', 'fitness']
+    const order = ['finance', 'wedding', 'housing', 'health', 'travel', 'insurance', 'documents', 'vehicle', 'fitness']
     return order.map(id => modules.find(item => item.id === id)).filter(Boolean)
   }, [modules])
 
@@ -85,8 +85,8 @@ const ModulesPage: React.FC = () => {
               <AppstoreOutlined style={{ color: '#1677ff', fontSize: 22 }} />
               <Title level={3} style={{ margin: 0 }}>家庭模块中心</Title>
             </Space>
-            <Paragraph style={{ marginTop: 8, marginBottom: 0, maxWidth: 760 }}>
-              这里是整套家庭管理系统的入口。财务已经在跑，备婚、保险、车辆、健身也已经进入可用状态，后面还可以继续往同一平台里加更多模块。
+              <Paragraph style={{ marginTop: 8, marginBottom: 0, maxWidth: 760 }}>
+              这里是整套家庭管理系统的入口。财务已经在跑，备婚、住房、健康、旅行、保险、车辆、健身也已经进入可用状态，后面还可以继续往同一平台里加更多模块。
             </Paragraph>
           </Col>
           <Col xs={12} md={6} lg={3}><Statistic title="已上线" value={stats.ready_count} /></Col>
@@ -121,6 +121,7 @@ const ModulesPage: React.FC = () => {
             <Button size="small" onClick={() => navigate('/modules/wedding')}>备婚</Button>
             <Button size="small" onClick={() => navigate('/modules/housing')}>住房</Button>
             <Button size="small" onClick={() => navigate('/modules/health')}>健康</Button>
+            <Button size="small" onClick={() => navigate('/modules/travel')}>旅行</Button>
             <Button size="small" onClick={() => navigate('/modules/insurance')}>保险</Button>
             <Button size="small" onClick={() => navigate('/modules/documents')}>证件</Button>
             <Button size="small" onClick={() => navigate('/modules/vehicle')}>车辆</Button>

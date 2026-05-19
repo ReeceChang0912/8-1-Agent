@@ -130,11 +130,11 @@ MODULES = [
     {
         "id": "travel",
         "title": "旅行管理",
-        "status": "planned",
+        "status": "ready",
         "category": "life",
         "description": "行程、预算、打包清单、预订信息。",
-        "web_route": "",
-        "miniapp_route": "",
+        "web_route": "/modules/travel",
+        "miniapp_route": "/pages/webview/webview",
         "owner": "product",
     },
 ]

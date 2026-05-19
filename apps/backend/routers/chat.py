@@ -172,6 +172,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "documents": None,
             "housing": None,
             "health": None,
+            "travel": None,
             "vehicle": None,
             "fitness": None,
             "finance": None,
@@ -191,6 +192,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
     document_items = db.get_document_records(family_id=family_id)
     housing_items = db.get_housing_records(family_id=family_id)
     health_items = db.get_health_records(family_id=family_id)
+    travel_items = db.get_travel_records(family_id=family_id)
     vehicle_items = db.get_vehicle_records(family_id=family_id)
     fitness_items = db.get_fitness_records(family_id=family_id)
     finance_summary = db.get_monthly_summary(now.year, now.month)
@@ -233,6 +235,21 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "followup_count": sum(1 for item in health_items if item.get("record_type") == "followup"),
             "chronic_count": sum(1 for item in health_items if item.get("record_type") == "chronic"),
             "abnormal_count": sum(1 for item in health_items if item.get("record_type") == "exam" and item.get("status") == "异常"),
+        },
+        "travel": {
+            "total_count": len(travel_items),
+            "itinerary_count": sum(1 for item in travel_items if item.get("record_type") == "itinerary"),
+            "booking_count": sum(1 for item in travel_items if item.get("record_type") == "booking"),
+            "budget_count": sum(1 for item in travel_items if item.get("record_type") == "budget"),
+            "packing_count": sum(1 for item in travel_items if item.get("record_type") == "packing"),
+            "budget_total": round(sum(float(item.get("amount") or 0) for item in travel_items if item.get("record_type") == "budget"), 2),
+            "upcoming_count": sum(
+                1
+                for item in travel_items
+                if item.get("record_type") == "itinerary"
+                and (travel_date := parse_date(item.get("travel_date") or ""))
+                and 0 <= (travel_date - now.date()).days <= 30
+            ),
         },
         "vehicle": {
             "vehicle_count": sum(1 for item in vehicle_items if item.get("record_type") == "vehicle"),

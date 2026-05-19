@@ -110,6 +110,20 @@ class HealthRecordCreate(BaseModel):
     family_id: str = ""
 
 
+class TravelRecordCreate(BaseModel):
+    record_type: str
+    title: str
+    destination: str = ""
+    companion: str = ""
+    provider: str = ""
+    travel_date: str = ""
+    end_date: str = ""
+    amount: float = 0
+    status: str = ""
+    note: str = ""
+    family_id: str = ""
+
+
 @router.get("/modules/wedding")
 def list_wedding_items(family_id: str = ""):
     db = get_db()
@@ -484,5 +498,64 @@ def health_stats(family_id: str = ""):
             1
             for item in items
             if (visit := parse_date(item.get("next_visit") or "")) and visit < today
+        ),
+    }
+
+
+@router.get("/modules/travel")
+def list_travel_records(family_id: str = ""):
+    db = get_db()
+    return {"items": db.get_travel_records(family_id=family_id) if db else []}
+
+
+@router.post("/modules/travel")
+def add_travel_record(data: TravelRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": True, "id": db.add_travel_record(**data.model_dump())}
+
+
+@router.put("/modules/travel/{record_id}")
+def update_travel_record(record_id: int, data: TravelRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.update_travel_record(record_id, **data.model_dump())}
+
+
+@router.delete("/modules/travel/{record_id}")
+def delete_travel_record(record_id: int, family_id: str = ""):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.delete_travel_record(record_id, family_id=family_id)}
+
+
+@router.get("/modules/travel/stats")
+def travel_stats(family_id: str = ""):
+    db = get_db()
+    items = db.get_travel_records(family_id=family_id) if db else []
+    today = datetime.now().date()
+
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    return {
+        "total_count": len(items),
+        "itinerary_count": sum(1 for item in items if item.get("record_type") == "itinerary"),
+        "booking_count": sum(1 for item in items if item.get("record_type") == "booking"),
+        "budget_count": sum(1 for item in items if item.get("record_type") == "budget"),
+        "packing_count": sum(1 for item in items if item.get("record_type") == "packing"),
+        "budget_total": round(sum(float(item.get("amount") or 0) for item in items if item.get("record_type") == "budget"), 2),
+        "upcoming_count": sum(
+            1
+            for item in items
+            if item.get("record_type") == "itinerary"
+            and (travel_date := parse_date(item.get("travel_date") or ""))
+            and 0 <= (travel_date - today).days <= 30
         ),
     }

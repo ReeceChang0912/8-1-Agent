@@ -6,6 +6,7 @@ const shortcuts = [
   { title: '备婚', route: '/modules/wedding', desc: '看婚礼筹备进度' },
   { title: '住房', route: '/modules/housing', desc: '看房租房贷和报修' },
   { title: '健康', route: '/modules/health', desc: '看体检和用药' },
+  { title: '旅行', route: '/modules/travel', desc: '看行程预算和打包' },
   { title: '保险', route: '/modules/insurance', desc: '看保单和理赔' },
   { title: '证件', route: '/modules/documents', desc: '看证件到期提醒' },
   { title: '车辆', route: '/modules/vehicle', desc: '看保养和费用' },

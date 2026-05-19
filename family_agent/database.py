@@ -399,6 +399,24 @@ class DatabaseManager:
                 )
             """)
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS travel_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    destination TEXT DEFAULT '',
+                    companion TEXT DEFAULT '',
+                    provider TEXT DEFAULT '',
+                    travel_date TEXT DEFAULT '',
+                    end_date TEXT DEFAULT '',
+                    amount NUMERIC(12,2) DEFAULT 0,
+                    status TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS vehicle_records (
                     id SERIAL PRIMARY KEY,
                     family_id TEXT DEFAULT '',
@@ -1366,6 +1384,44 @@ class DatabaseManager:
     def delete_health_record(self, record_id: int, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute('DELETE FROM health_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_travel_record(self, record_type: str, title: str, destination: str = "", companion: str = "",
+                          provider: str = "", travel_date: str = "", end_date: str = "",
+                          amount: float = 0, status: str = "", note: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO travel_records (family_id, record_type, title, destination, companion, provider, travel_date, end_date, amount, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, title, destination, companion, provider, travel_date, end_date, amount, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_travel_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM travel_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_travel_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE travel_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_travel_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM travel_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_vehicle_record(self, record_type: str, title: str, plate: str = "",

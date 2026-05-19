@@ -76,6 +76,7 @@ const ChatPage: React.FC = () => {
     documents: null,
     housing: null,
     health: null,
+    travel: null,
     vehicle: null,
     fitness: null,
     finance: null,
@@ -92,6 +93,7 @@ const ChatPage: React.FC = () => {
     { cmd: '/documents', desc: '查看证件摘要/列表', icon: '🪪', example: '/documents list' },
     { cmd: '/housing', desc: '查看住房摘要/列表', icon: '🏠', example: '/housing summary' },
     { cmd: '/health', desc: '查看健康摘要/列表', icon: '💊', example: '/health summary' },
+    { cmd: '/travel', desc: '查看旅行摘要/列表', icon: '🧳', example: '/travel summary' },
     { cmd: '/vehicle', desc: '查看车辆摘要/列表', icon: '🚗', example: '/vehicle summary' },
     { cmd: '/fitness', desc: '查看健身摘要/列表', icon: '🏋️', example: '/fitness list' },
     { cmd: '/finance', desc: '查看本月财务摘要', icon: '💰', example: '/finance summary' },
@@ -587,6 +589,7 @@ const ChatPage: React.FC = () => {
     { icon: <MessageOutlined />, label: '看证件', text: '/documents summary' },
     { icon: <MessageOutlined />, label: '看住房', text: '/housing summary' },
     { icon: <MessageOutlined />, label: '看健康', text: '/health summary' },
+    { icon: <MessageOutlined />, label: '看旅行', text: '/travel summary' },
     { icon: <MessageOutlined />, label: '看车辆', text: '/vehicle summary' },
     { icon: <MessageOutlined />, label: '看健身', text: '/fitness summary' },
     { icon: <PictureOutlined />, label: '上传照片', action: 'upload' },
@@ -1133,6 +1136,15 @@ const ChatPage: React.FC = () => {
                     </Space>
                     <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
                       体检 {moduleSummary.health?.exam_count || 0} · 用药 {moduleSummary.health?.medication_count || 0} · 复诊 {moduleSummary.health?.followup_count || 0}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>旅行</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/travel')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      行程 {moduleSummary.travel?.itinerary_count || 0} · 预订 {moduleSummary.travel?.booking_count || 0} · 近期 {moduleSummary.travel?.upcoming_count || 0}
                     </div>
                   </Card>
                   <Card size="small" style={{ borderRadius: 8 }}>

@@ -353,6 +353,8 @@ class FamilyAgentCore:
             return self._handle_housing_command(args, family_id=family_id)
         elif cmd == '/health':
             return self._handle_health_command(args, family_id=family_id)
+        elif cmd == '/travel':
+            return self._handle_travel_command(args, family_id=family_id)
         elif cmd == '/vehicle':
             return self._handle_vehicle_command(args, family_id=family_id)
         elif cmd == '/fitness':
@@ -372,6 +374,8 @@ class FamilyAgentCore:
                 "  `/documents list` - 查看证件记录\n"
                 "  `/housing list` - 查看住房记录\n"
                 "  `/health list` - 查看健康记录\n"
+                "  `/travel summary` - 查看旅行概览\n"
+                "  `/travel list` - 查看旅行记录\n"
                 "  `/vehicle list` - 查看车辆记录\n"
                 "  `/fitness list` - 查看健身记录\n"
                 "  `/finance summary` - 查看本月财务摘要\n"
@@ -606,6 +610,52 @@ class FamilyAgentCore:
             f"- 临近复诊：{due_soon}\n"
             f"- 已逾期：{overdue}\n"
             f"- 继续查看可用 `/health list`"
+        )
+
+    def _handle_travel_command(self, args: str, family_id: str = None) -> str:
+        from datetime import datetime
+        if not self.db:
+            return "旅行管理模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_travel_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/travel add 国庆去杭州`"
+            record_type = 'itinerary'
+            if any(k in title for k in ['预算', '费用', '花费', '支出']):
+                record_type = 'budget'
+            elif any(k in title for k in ['预订', '订票', '机票', '酒店', '门票']):
+                record_type = 'booking'
+            elif any(k in title for k in ['打包', '行李', '清单']):
+                record_type = 'packing'
+            self.db.add_travel_record(record_type=record_type, title=title, family_id=family_id or "")
+            return f"已新增旅行记录：{title}（{record_type}）"
+        if action == 'list':
+            if not items:
+                return "当前还没有旅行记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('status') or '-'}" for item in items[:8]]
+            return "旅行记录：\n" + "\n".join(lines)
+        today = datetime.now().date()
+        upcoming = 0
+        for item in items:
+            try:
+                travel_date = datetime.strptime(item.get('travel_date') or '', "%Y-%m-%d").date()
+            except Exception:
+                travel_date = None
+            if not travel_date:
+                continue
+            if 0 <= (travel_date - today).days <= 30:
+                upcoming += 1
+        return (
+            f"旅行概览：\n"
+            f"- 总数：{len(items)}\n"
+            f"- 行程：{sum(1 for item in items if item.get('record_type') == 'itinerary')}\n"
+            f"- 预订：{sum(1 for item in items if item.get('record_type') == 'booking')}\n"
+            f"- 预算：{sum(1 for item in items if item.get('record_type') == 'budget')}\n"
+            f"- 打包：{sum(1 for item in items if item.get('record_type') == 'packing')}\n"
+            f"- 近30天行程：{upcoming}\n"
+            f"- 继续查看可用 `/travel list`"
         )
 
     def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:
