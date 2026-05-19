@@ -21,6 +21,7 @@ const FitnessPage: React.FC = () => {
   const [editing, setEditing] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
+  const [keyword, setKeyword] = useState('')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -46,6 +47,20 @@ const FitnessPage: React.FC = () => {
     metrics: items.filter(item => item.record_type === 'metric'),
     meals: items.filter(item => item.record_type === 'meal'),
   }), [items])
+
+  const filtered = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    if (!q) return grouped
+    const filterItems = (list: any[]) =>
+      list.filter(item =>
+        `${item.title || ''} ${item.status || ''} ${item.note || ''} ${item.record_date || ''}`.toLowerCase().includes(q),
+      )
+    return {
+      workouts: filterItems(grouped.workouts),
+      metrics: filterItems(grouped.metrics),
+      meals: filterItems(grouped.meals),
+    }
+  }, [grouped, keyword])
 
   const currentConfig = tabConfig[tab]
 
@@ -110,13 +125,20 @@ const FitnessPage: React.FC = () => {
       </Card>
 
       <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增{currentConfig.title}</Button>} style={{ borderRadius: 8 }}>
+        <Input.Search
+          allowClear
+          placeholder="搜索训练、体重、饮食备注"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{ marginBottom: 16, maxWidth: 320 }}
+        />
         {loading ? <Spin /> : (
           <Tabs activeKey={tab} onChange={(value) => setTab(value as typeof tab)} items={[
             {
               key: 'workouts',
               label: '训练',
-              children: grouped.workouts.length ? (
-                <List dataSource={grouped.workouts} renderItem={(item) => (
+              children: filtered.workouts.length ? (
+                <List dataSource={[...filtered.workouts].sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -125,13 +147,13 @@ const FitnessPage: React.FC = () => {
                     <Text strong>{Number(item.calories || 0)} kcal</Text>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无训练记录" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无训练记录'} />,
             },
             {
               key: 'metrics',
               label: '身体数据',
-              children: grouped.metrics.length ? (
-                <List dataSource={grouped.metrics} renderItem={(item) => (
+              children: filtered.metrics.length ? (
+                <List dataSource={[...filtered.metrics].sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -139,13 +161,13 @@ const FitnessPage: React.FC = () => {
                     <List.Item.Meta avatar={<HeartOutlined />} title={<Space><Text strong>{item.record_date || '未设置日期'}</Text><Tag>{item.status}</Tag></Space>} description={`体重 ${Number(item.weight || 0)} kg · 体脂 ${Number(item.body_fat || 0)}% · 腰围 ${Number(item.waist || 0)} cm`} />
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无身体数据" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无身体数据'} />,
             },
             {
               key: 'meals',
               label: '饮食',
-              children: grouped.meals.length ? (
-                <List dataSource={grouped.meals} renderItem={(item) => (
+              children: filtered.meals.length ? (
+                <List dataSource={[...filtered.meals].sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -154,7 +176,7 @@ const FitnessPage: React.FC = () => {
                     <Text strong>{Number(item.calories || 0)} kcal</Text>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无饮食记录" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无饮食记录'} />,
             },
           ]} />
         )}

@@ -21,6 +21,7 @@ const InsurancePage: React.FC = () => {
   const [editing, setEditing] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
+  const [keyword, setKeyword] = useState('')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -46,6 +47,20 @@ const InsurancePage: React.FC = () => {
     reminders: items.filter(item => item.record_type === 'reminder'),
     claims: items.filter(item => item.record_type === 'claim'),
   }), [items])
+
+  const filtered = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    if (!q) return grouped
+    const filterItems = (list: any[]) =>
+      list.filter(item =>
+        `${item.name || ''} ${item.title || ''} ${item.company || ''} ${item.holder || ''} ${item.coverage || ''} ${item.note || ''}`.toLowerCase().includes(q),
+      )
+    return {
+      policies: filterItems(grouped.policies),
+      reminders: filterItems(grouped.reminders),
+      claims: filterItems(grouped.claims),
+    }
+  }, [grouped, keyword])
 
   const currentConfig = tabConfig[tab]
 
@@ -110,13 +125,20 @@ const InsurancePage: React.FC = () => {
       </Card>
 
       <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增{currentConfig.title}</Button>} style={{ borderRadius: 8 }}>
+        <Input.Search
+          allowClear
+          placeholder="搜索保单、公司、持有人、备注"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{ marginBottom: 16, maxWidth: 360 }}
+        />
         {loading ? <Spin /> : (
           <Tabs activeKey={tab} onChange={(value) => setTab(value as typeof tab)} items={[
             {
               key: 'policies',
               label: '保单',
-              children: grouped.policies.length ? (
-                <List dataSource={grouped.policies} renderItem={(item) => (
+              children: filtered.policies.length ? (
+                <List dataSource={[...filtered.policies].sort((a, b) => String(a.renew_date || '').localeCompare(String(b.renew_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -128,13 +150,13 @@ const InsurancePage: React.FC = () => {
                     </div>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无保单" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无保单'} />,
             },
             {
               key: 'reminders',
               label: '提醒',
-              children: grouped.reminders.length ? (
-                <List dataSource={grouped.reminders} renderItem={(item) => (
+              children: filtered.reminders.length ? (
+                <List dataSource={[...filtered.reminders].sort((a, b) => String(a.renew_date || '').localeCompare(String(b.renew_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -143,13 +165,13 @@ const InsurancePage: React.FC = () => {
                     <Text type="secondary">{item.renew_date || '未设置日期'}</Text>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无提醒" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无提醒'} />,
             },
             {
               key: 'claims',
               label: '理赔',
-              children: grouped.claims.length ? (
-                <List dataSource={grouped.claims} renderItem={(item) => (
+              children: filtered.claims.length ? (
+                <List dataSource={[...filtered.claims].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -161,7 +183,7 @@ const InsurancePage: React.FC = () => {
                     </div>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无理赔记录" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无理赔记录'} />,
             },
           ]} />
         )}

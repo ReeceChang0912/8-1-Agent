@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Card, Col, Row, Tag, Typography, Space, Button, Empty, Statistic, message } from 'antd'
+import { Card, Col, Row, Tag, Typography, Space, Button, Empty, Statistic, message, Input, Segmented } from 'antd'
 import { AppstoreOutlined, CheckCircleOutlined, ClockCircleOutlined, ArrowRightOutlined, WalletOutlined, HeartOutlined, CarOutlined, SafetyCertificateOutlined, CalendarOutlined } from '@ant-design/icons'
 import { modulesAPI } from '../services/api'
 import { useNavigate } from 'react-router-dom'
@@ -24,6 +24,8 @@ const ModulesPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [modules, setModules] = useState<any[]>([])
   const [stats, setStats] = useState({ ready_count: 0, planned_count: 0 })
+  const [keyword, setKeyword] = useState('')
+  const [category, setCategory] = useState<'all' | 'core' | 'life'>('all')
 
   useEffect(() => {
     load()
@@ -47,6 +49,15 @@ const ModulesPage: React.FC = () => {
     const order = ['finance', 'wedding', 'insurance', 'vehicle', 'fitness']
     return order.map(id => modules.find(item => item.id === id)).filter(Boolean)
   }, [modules])
+
+  const filteredModules = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    return modules.filter((module) => {
+      const matchesCategory = category === 'all' || module.category === category
+      const matchesKeyword = !q || `${module.title || ''} ${module.description || ''} ${module.owner || ''}`.toLowerCase().includes(q)
+      return matchesCategory && matchesKeyword
+    })
+  }, [category, keyword, modules])
 
   const openModule = (module: any) => {
     if (module.web_route) {
@@ -74,6 +85,36 @@ const ModulesPage: React.FC = () => {
           <Col xs={12} md={6} lg={3}><Statistic title="生活模块" value={modules.filter(item => item.category === 'life').length} /></Col>
           <Col xs={12} md={6} lg={3}><Statistic title="核心模块" value={modules.filter(item => item.category === 'core').length} /></Col>
         </Row>
+      </Card>
+
+      <Card style={{ marginBottom: 16, borderRadius: 8 }}>
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Input.Search
+              allowClear
+              placeholder="搜索模块"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              style={{ maxWidth: 320 }}
+            />
+            <Segmented
+              value={category}
+              onChange={(value) => setCategory(value as typeof category)}
+              options={[
+                { label: '全部', value: 'all' },
+                { label: '核心', value: 'core' },
+                { label: '生活', value: 'life' },
+              ]}
+            />
+          </Space>
+          <Space wrap>
+            <Button size="small" onClick={() => navigate('/finance')}>财务</Button>
+            <Button size="small" onClick={() => navigate('/modules/wedding')}>备婚</Button>
+            <Button size="small" onClick={() => navigate('/modules/insurance')}>保险</Button>
+            <Button size="small" onClick={() => navigate('/modules/vehicle')}>车辆</Button>
+            <Button size="small" onClick={() => navigate('/modules/fitness')}>健身</Button>
+          </Space>
+        </Space>
       </Card>
 
       <Card style={{ marginBottom: 16, borderRadius: 8 }} bodyStyle={{ paddingBottom: 8 }}>
@@ -108,7 +149,7 @@ const ModulesPage: React.FC = () => {
       </Card>
 
       <Row gutter={[16, 16]}>
-        {modules.map(module => {
+        {filteredModules.map(module => {
           const meta = statusMeta[module.status] || statusMeta.planned
           return (
             <Col xs={24} md={12} xl={8} key={module.id}>
@@ -136,9 +177,9 @@ const ModulesPage: React.FC = () => {
             </Col>
           )
         })}
-        {!loading && modules.length === 0 && (
+        {!loading && filteredModules.length === 0 && (
           <Col span={24}>
-            <Empty description="暂无模块" />
+            <Empty description={keyword || category !== 'all' ? '没有匹配的模块' : '暂无模块'} />
           </Col>
         )}
       </Row>

@@ -29,6 +29,7 @@ const WeddingPage: React.FC = () => {
   const [editing, setEditing] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({ budget_total: 0, spent_total: 0, todo_count: 0 })
+  const [keyword, setKeyword] = useState('')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -55,6 +56,21 @@ const WeddingPage: React.FC = () => {
     vendor: items.filter(item => item.item_type === 'vendor'),
     todo: items.filter(item => item.item_type === 'todo'),
   }), [items])
+
+  const filtered = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    if (!q) return grouped
+    const filterItems = (list: any[]) =>
+      list.filter(item =>
+        `${item.title || ''} ${item.description || ''} ${item.owner || ''} ${item.status || ''}`.toLowerCase().includes(q),
+      )
+    return {
+      timeline: filterItems(grouped.timeline),
+      budget: filterItems(grouped.budget),
+      vendor: filterItems(grouped.vendor),
+      todo: filterItems(grouped.todo),
+    }
+  }, [grouped, keyword])
 
   const progress = stats.budget_total ? Math.min(100, Math.round(((stats.spent_total || 0) / stats.budget_total) * 100)) : 0
 
@@ -134,13 +150,20 @@ const WeddingPage: React.FC = () => {
       </Card>
 
       <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增{tabTitles[activeTab]}</Button>} style={{ borderRadius: 8 }}>
+        <Input.Search
+          allowClear
+          placeholder="搜索备婚事项、供应商、备注"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{ marginBottom: 16, maxWidth: 360 }}
+        />
         {loading ? <Spin /> : (
           <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
             {
               key: 'timeline',
               label: '时间线',
-              children: grouped.timeline.length ? (
-                <List dataSource={grouped.timeline} renderItem={(item) => (
+              children: filtered.timeline.length ? (
+                <List dataSource={[...filtered.timeline].sort((a, b) => String(a.item_date || '').localeCompare(String(b.item_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -148,13 +171,13 @@ const WeddingPage: React.FC = () => {
                     <List.Item.Meta avatar={<CalendarOutlined />} title={<Space><Text strong>{item.title}</Text><Tag>{item.status}</Tag></Space>} description={`${item.item_date || '未设置日期'} · ${item.owner || '未分配负责人'}`} />
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无时间线" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无时间线'} />,
             },
             {
               key: 'budget',
               label: '预算',
-              children: grouped.budget.length ? (
-                <List dataSource={grouped.budget} renderItem={(item) => (
+              children: filtered.budget.length ? (
+                <List dataSource={[...filtered.budget].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -163,13 +186,13 @@ const WeddingPage: React.FC = () => {
                     {renderBudgetMeta(item)}
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无预算" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无预算'} />,
             },
             {
               key: 'vendor',
               label: '供应商',
-              children: grouped.vendor.length ? (
-                <List dataSource={grouped.vendor} renderItem={(item) => (
+              children: filtered.vendor.length ? (
+                <List dataSource={[...filtered.vendor].sort((a, b) => String(a.status || '').localeCompare(String(b.status || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -177,13 +200,13 @@ const WeddingPage: React.FC = () => {
                     <List.Item.Meta avatar={<ShopOutlined />} title={<Space><Text strong>{item.title}</Text><Tag>{item.status}</Tag></Space>} description={`${item.owner || '未填写联系人'} · ${item.description || '未填写说明'}`} />
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无供应商" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无供应商'} />,
             },
             {
               key: 'todo',
               label: '待办',
-              children: grouped.todo.length ? (
-                <List dataSource={grouped.todo} renderItem={(item) => (
+              children: filtered.todo.length ? (
+                <List dataSource={[...filtered.todo].sort((a, b) => String(a.status || '').localeCompare(String(b.status || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => openEdit(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -191,7 +214,7 @@ const WeddingPage: React.FC = () => {
                     <List.Item.Meta avatar={<CheckSquareOutlined />} title={<Space><Text strong>{item.title}</Text><Tag color={item.status === 'done' ? 'green' : 'gold'}>{item.status}</Tag></Space>} description={`${item.item_date || '无截止时间'} · ${item.owner || '未分配负责人'}`} />
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无待办" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无待办'} />,
             },
           ]} />
         )}

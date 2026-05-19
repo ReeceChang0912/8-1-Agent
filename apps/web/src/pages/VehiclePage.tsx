@@ -21,6 +21,7 @@ const VehiclePage: React.FC = () => {
   const [editing, setEditing] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
+  const [keyword, setKeyword] = useState('')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -46,6 +47,20 @@ const VehiclePage: React.FC = () => {
     services: items.filter(item => item.record_type === 'service'),
     expenses: items.filter(item => item.record_type === 'expense'),
   }), [items])
+
+  const filtered = useMemo(() => {
+    const q = keyword.trim().toLowerCase()
+    if (!q) return grouped
+    const filterItems = (list: any[]) =>
+      list.filter(item =>
+        `${item.title || ''} ${item.plate || ''} ${item.model || ''} ${item.status || ''} ${item.note || ''}`.toLowerCase().includes(q),
+      )
+    return {
+      vehicles: filterItems(grouped.vehicles),
+      services: filterItems(grouped.services),
+      expenses: filterItems(grouped.expenses),
+    }
+  }, [grouped, keyword])
 
   const currentConfig = tabConfig[tab]
 
@@ -110,13 +125,20 @@ const VehiclePage: React.FC = () => {
       </Card>
 
       <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增{currentConfig.title}</Button>} style={{ borderRadius: 8 }}>
+        <Input.Search
+          allowClear
+          placeholder="搜索车牌、车型、备注"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          style={{ marginBottom: 16, maxWidth: 320 }}
+        />
         {loading ? <Spin /> : (
           <Tabs activeKey={tab} onChange={(value) => setTab(value as typeof tab)} items={[
             {
               key: 'vehicles',
               label: '车辆档案',
-              children: grouped.vehicles.length ? (
-                <List dataSource={grouped.vehicles} renderItem={(item) => (
+              children: filtered.vehicles.length ? (
+                <List dataSource={[...filtered.vehicles].sort((a, b) => String(a.status || '').localeCompare(String(b.status || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -124,13 +146,13 @@ const VehiclePage: React.FC = () => {
                     <List.Item.Meta avatar={<CarOutlined />} title={<Space><Text strong>{item.title}</Text><Tag>{item.status}</Tag></Space>} description={`${item.plate || '未填写车牌'} · ${item.model || '未填写车型'} · 里程 ${Number(item.mileage || 0).toLocaleString()} km`} />
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无车辆档案" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无车辆档案'} />,
             },
             {
               key: 'services',
               label: '保养记录',
-              children: grouped.services.length ? (
-                <List dataSource={grouped.services} renderItem={(item) => (
+              children: filtered.services.length ? (
+                <List dataSource={[...filtered.services].sort((a, b) => String(b.record_date || '').localeCompare(String(a.record_date || '')))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -139,13 +161,13 @@ const VehiclePage: React.FC = () => {
                     <Text strong>¥{Number(item.amount || 0).toLocaleString()}</Text>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无保养记录" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无保养记录'} />,
             },
             {
               key: 'expenses',
               label: '费用记录',
-              children: grouped.expenses.length ? (
-                <List dataSource={grouped.expenses} renderItem={(item) => (
+              children: filtered.expenses.length ? (
+                <List dataSource={[...filtered.expenses].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))} renderItem={(item) => (
                   <List.Item actions={[
                     <Button key="e" type="link" icon={<EditOutlined />} onClick={() => editItem(item)}>编辑</Button>,
                     <Button key="d" type="link" danger icon={<DeleteOutlined />} onClick={() => remove(item.id)}>删除</Button>,
@@ -154,7 +176,7 @@ const VehiclePage: React.FC = () => {
                     <Text strong>¥{Number(item.amount || 0).toLocaleString()}</Text>
                   </List.Item>
                 )} />
-              ) : <Empty description="暂无费用记录" />,
+              ) : <Empty description={keyword ? '没有匹配结果' : '暂无费用记录'} />,
             },
           ]} />
         )}
