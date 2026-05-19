@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider } from 'antd'
-import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined } from '@ant-design/icons'
+import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined, CopyOutlined, ReloadOutlined } from '@ant-design/icons'
 import { chatAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -37,11 +38,14 @@ interface ChatSession {
 const ChatPage: React.FC = () => {
   const userId = localStorage.getItem('member_name') || 'anonymous'
   const familyId = localStorage.getItem('family_id') || ''
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [renamingSession, setRenamingSession] = useState<ChatSession | null>(null)
   const [renameTitle, setRenameTitle] = useState('')
+  const [sessionFilter, setSessionFilter] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -84,6 +88,16 @@ const ChatPage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null) // WebSocket连接
   const activeSessionRef = useRef<string>('')
+  const initialSessionSyncedRef = useRef(false)
+
+  const filteredSessions = useMemo(() => {
+    const keyword = sessionFilter.trim().toLowerCase()
+    if (!keyword) return sessions
+    return sessions.filter(session => {
+      const haystack = `${session.title || ''} ${session.last_message || ''}`.toLowerCase()
+      return haystack.includes(keyword)
+    })
+  }, [sessionFilter, sessions])
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -91,7 +105,6 @@ const ChatPage: React.FC = () => {
     }, 50)
   }
 
-  // Auto-fill input with voice transcript
   useEffect(() => {
     if (transcript) {
       setInputValue(transcript);
@@ -110,6 +123,27 @@ const ChatPage: React.FC = () => {
     loadSessions()
     loadModuleSummary()
   }, [])
+
+  useEffect(() => {
+    const sessionIdFromUrl = searchParams.get('session')
+    if (sessionIdFromUrl && sessionIdFromUrl !== activeSessionRef.current) {
+      setActiveSessionId(sessionIdFromUrl)
+      activeSessionRef.current = sessionIdFromUrl
+      initialSessionSyncedRef.current = true
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!activeSessionId) return
+    if (!initialSessionSyncedRef.current) {
+      initialSessionSyncedRef.current = true
+    }
+    if (searchParams.get('session') !== activeSessionId) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('session', activeSessionId)
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [activeSessionId, searchParams, setSearchParams])
 
   const loadModuleSummary = async () => {
     try {
@@ -134,6 +168,12 @@ const ChatPage: React.FC = () => {
       const res = await chatAPI.listSessions(userId, 50, familyId)
       const list = res.data.sessions || []
       setSessions(list)
+      const sessionIdFromUrl = searchParams.get('session')
+      if (sessionIdFromUrl && list.some((item: ChatSession) => item.session_id === sessionIdFromUrl)) {
+        setActiveSessionId(sessionIdFromUrl)
+        activeSessionRef.current = sessionIdFromUrl
+        return
+      }
       if (!activeSessionRef.current && list.length > 0) {
         setActiveSessionId(list[0].session_id)
       } else if (activeSessionRef.current && !list.some((item: ChatSession) => item.session_id === activeSessionRef.current)) {
@@ -169,6 +209,7 @@ const ChatPage: React.FC = () => {
       const session = res.data.session
       setSessions(prev => [session, ...prev])
       setActiveSessionId(session.session_id)
+      setSearchParams({ session: session.session_id }, { replace: true })
       setMessages([])
       setInputValue('')
     } catch (error) {
@@ -183,6 +224,7 @@ const ChatPage: React.FC = () => {
   const handleSelectSession = (sessionId: string) => {
     if (sessionId === activeSessionId || loading) return
     setActiveSessionId(sessionId)
+    setSearchParams({ session: sessionId }, { replace: true })
     setInputValue('')
     setAttachedFiles([])
   }
@@ -238,15 +280,27 @@ const ChatPage: React.FC = () => {
   }
 
   const currentSession = sessions.find(item => item.session_id === activeSessionId)
+  const currentSessionUpdatedAt = currentSession?.updated_at || currentSession?.created_at || ''
+  const currentSessionMessageCount = currentSession?.message_count || 0
+  const currentSessionHasActions = !!currentSession
+
+  const handleCopySessionLink = async () => {
+    if (!activeSessionId) return
+    const url = `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(activeSessionId)}`
+    try {
+      await navigator.clipboard.writeText(url)
+      message.success('会话链接已复制')
+    } catch (error) {
+      message.error('复制失败')
+    }
+  }
+
+  const handleRefreshCurrentSession = async () => {
+    if (!activeSessionId) return
+    await Promise.all([loadSessions(), loadSessionHistory(activeSessionId), loadModuleSummary()])
+  }
 
   // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
-  // Auto-fill input with voice transcript
-  useEffect(() => {
-    if (transcript) {
-      setInputValue(transcript);
-    }
-  }, [transcript]);
-
   useEffect(() => {
     const userId = localStorage.getItem('member_name') || 'anonymous'
     
@@ -282,15 +336,15 @@ const ChatPage: React.FC = () => {
           }
           setMessages(prev => [...prev, assistantMessage])
           // 检测日程创建成功
-        if (fullResponse.includes('已添加到日程安排')) {
-          message.success('📅 已添加到日程管理，快去查看吧！')
-        }
-        if (/已新增|已添加到购物清单|财务概览|备婚概览|保险概览|车辆概览|健身概览/.test(fullResponse)) {
-          loadModuleSummary()
-        }
-        setStreamingMessage('')
-        setIsStreaming(false)
-        setLoading(false)
+          if (fullResponse.includes('已添加到日程安排')) {
+            message.success('📅 已添加到日程管理，快去查看吧！')
+          }
+          if (/已新增|已添加到购物清单|财务概览|备婚概览|保险概览|车辆概览|健身概览/.test(fullResponse)) {
+            loadModuleSummary()
+          }
+          setStreamingMessage('')
+          setIsStreaming(false)
+          setLoading(false)
           refreshSessionsSoon()
         }
       }
@@ -502,9 +556,6 @@ const ChatPage: React.FC = () => {
   const isConfirmMessage = (msg: Message) =>
     msg.role === 'assistant' && msg.content.includes('请确认是否执行')
 
-  // 获取最后一个确认消息的索引
-  const lastConfirmIndex = messages.map((m, i) => isConfirmMessage(m) ? i : -1).filter(i => i >= 0).pop() ?? -1
-
   // 发送确认或取消
   const handleConfirmAction = async (confirmed: boolean) => {
     const text = confirmed ? '是' : '不'
@@ -574,20 +625,30 @@ const ChatPage: React.FC = () => {
           .message-bubble { max-width: 85vw !important; }
         }
       `}</style>
-      <Card
+          <Card
         className="chat-session-sidebar"
         title={<Space><MessageOutlined /><span>会话</span></Space>}
         extra={
-          <Tooltip title="新建会话">
-            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleNewSession} />
-          </Tooltip>
+          <Space>
+            <Tooltip title="新建会话">
+              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleNewSession} />
+            </Tooltip>
+          </Space>
         }
         bodyStyle={{ flex: 1, overflow: 'auto', padding: 10 }}
       >
-        {sessions.length === 0 && !sessionsLoading ? (
+        <Input
+          allowClear
+          size="small"
+          placeholder="搜索会话"
+          value={sessionFilter}
+          onChange={(e) => setSessionFilter(e.target.value)}
+          style={{ marginBottom: 10, borderRadius: 8 }}
+        />
+        {filteredSessions.length === 0 && !sessionsLoading ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="还没有会话"
+            description={sessionFilter ? '没有匹配的会话' : '还没有会话'}
           >
             <Button type="primary" icon={<PlusOutlined />} onClick={handleNewSession}>
               新建会话
@@ -596,7 +657,7 @@ const ChatPage: React.FC = () => {
         ) : (
           <List
             loading={sessionsLoading}
-            dataSource={sessions}
+            dataSource={filteredSessions}
             split={false}
             renderItem={(session) => (
               <div
@@ -638,11 +699,35 @@ const ChatPage: React.FC = () => {
       <div className="chat-main-panel">
       <Card 
         title={
-          <Space>
-            <span>{currentSession?.title || '新对话'}</span>
-            <Tag color={connectionMode === 'websocket' ? 'green' : 'orange'}>
-              {connectionMode === 'websocket' ? '🚀 流式模式' : '⚡ HTTP模式'}
-            </Tag>
+          <Space direction="vertical" size={2} style={{ width: '100%' }}>
+            <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Space wrap>
+                <span style={{ fontWeight: 600 }}>{currentSession?.title || '新对话'}</span>
+                <Tag color={connectionMode === 'websocket' ? 'green' : 'orange'}>
+                  {connectionMode === 'websocket' ? '🚀 流式模式' : '⚡ HTTP模式'}
+                </Tag>
+                <Text type="secondary">{currentSessionMessageCount} 条消息</Text>
+              </Space>
+              <Space>
+                <Button size="small" icon={<ReloadOutlined />} onClick={handleRefreshCurrentSession} disabled={!currentSessionHasActions}>
+                  刷新
+                </Button>
+                <Button size="small" icon={<CopyOutlined />} onClick={handleCopySessionLink} disabled={!currentSessionHasActions}>
+                  复制链接
+                </Button>
+                <Button size="small" icon={<EditOutlined />} onClick={() => currentSession && openRenameModal(currentSession)} disabled={!currentSessionHasActions}>
+                  重命名
+                </Button>
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => currentSession && handleArchiveSession(currentSession)} disabled={!currentSessionHasActions}>
+                  删除
+                </Button>
+              </Space>
+            </Space>
+            {currentSessionUpdatedAt && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                更新于 {formatSessionTime(currentSessionUpdatedAt)}
+              </Text>
+            )}
           </Space>
         }
         style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
@@ -937,7 +1022,7 @@ const ChatPage: React.FC = () => {
           <Card size="small" style={{ borderRadius: 8 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Text strong>备婚</Text>
-              <Button size="small" type="link" onClick={() => setInputValue('/wedding summary')}>查看</Button>
+              <Button size="small" type="link" onClick={() => navigate('/modules/wedding')}>查看</Button>
             </Space>
             <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
               待办 {moduleSummary.wedding?.todo_count || 0} · 预算 ¥{Number(moduleSummary.wedding?.budget_total || 0).toLocaleString()}
@@ -947,7 +1032,7 @@ const ChatPage: React.FC = () => {
           <Card size="small" style={{ borderRadius: 8 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Text strong>保险</Text>
-              <Button size="small" type="link" onClick={() => setInputValue('/insurance summary')}>查看</Button>
+              <Button size="small" type="link" onClick={() => navigate('/modules/insurance')}>查看</Button>
             </Space>
             <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
               保单 {moduleSummary.insurance?.policy_count || 0} · 理赔 {moduleSummary.insurance?.claim_count || 0}
@@ -957,7 +1042,7 @@ const ChatPage: React.FC = () => {
           <Card size="small" style={{ borderRadius: 8 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Text strong>车辆</Text>
-              <Button size="small" type="link" onClick={() => setInputValue('/vehicle summary')}>查看</Button>
+              <Button size="small" type="link" onClick={() => navigate('/modules/vehicle')}>查看</Button>
             </Space>
             <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
               档案 {moduleSummary.vehicle?.vehicle_count || 0} · 费用 ¥{Number(moduleSummary.vehicle?.expense_total || 0).toLocaleString()}
@@ -967,7 +1052,7 @@ const ChatPage: React.FC = () => {
           <Card size="small" style={{ borderRadius: 8 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Text strong>健身</Text>
-              <Button size="small" type="link" onClick={() => setInputValue('/fitness summary')}>查看</Button>
+              <Button size="small" type="link" onClick={() => navigate('/modules/fitness')}>查看</Button>
             </Space>
             <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
               训练 {moduleSummary.fitness?.workout_count || 0} · 体重 {moduleSummary.fitness?.avg_weight || 0}kg
@@ -977,7 +1062,7 @@ const ChatPage: React.FC = () => {
           <Card size="small" style={{ borderRadius: 8 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Text strong>财务</Text>
-              <Button size="small" type="link" onClick={() => setInputValue('/finance summary')}>查看</Button>
+              <Button size="small" type="link" onClick={() => navigate('/finance')}>查看</Button>
             </Space>
             <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
               收入 ¥{Number(moduleSummary.finance?.total_income || 0).toLocaleString()} · 支出 ¥{Number(moduleSummary.finance?.total_expense || 0).toLocaleString()}

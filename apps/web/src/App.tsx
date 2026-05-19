@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Layout, Menu, theme, Avatar, Dropdown, message, Badge, Drawer, Button } from 'antd'
 import { MenuOutlined } from '@ant-design/icons'
 import {
@@ -18,27 +18,11 @@ import {
   AppstoreOutlined,
   WalletOutlined,
   DatabaseOutlined,
+  SafetyCertificateOutlined,
+  CarOutlined,
+  HeartOutlined,
 } from '@ant-design/icons'
-import { useNavigate, useLocation } from 'react-router-dom'
-import WorkbenchPage from './pages/WorkbenchPage'
-import ChatPage from './pages/ChatPage'
-import MembersPage from './pages/MembersPage'
-import SchedulePage from './pages/SchedulePage'
-import ShoppingPage from './pages/ShoppingPage'
-import PhotosPage from './pages/PhotosPage'
-import SmartHomePage from './pages/SmartHomePage'
-import KnowledgePage from './pages/KnowledgePage'
-import SkillsPage from './pages/SkillsPage'
-import MCPPage from './pages/MCPPage'
-import StatsPage from './pages/StatsPage'
-import NotificationsPage from './pages/NotificationsPage'
-import FinancePage from './pages/FinancePage'
-import ModulesPage from './pages/ModulesPage'
-import WeddingPage from './pages/WeddingPage'
-import InsurancePage from './pages/InsurancePage'
-import VehiclePage from './pages/VehiclePage'
-import FitnessPage from './pages/FitnessPage'
-import MemoryPage from './pages/MemoryPage'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import axios from 'axios'
 
@@ -71,92 +55,28 @@ for (const [key, path] of Object.entries(PAGE_ROUTES)) {
   ROUTE_TO_KEY[path] = key
 }
 
-const App: React.FC = () => {
+const routeToKey = (pathname: string) => {
+  if (ROUTE_TO_KEY[pathname]) return ROUTE_TO_KEY[pathname]
+  const matched = Object.entries(PAGE_ROUTES).find(([, path]) => pathname === path || pathname.startsWith(`${path}/`))
+  return matched ? matched[0] : 'myWorkbench'
+}
+
+const AppShell: React.FC<{ isLoggedIn: boolean; userInfo: any; onLogout: () => Promise<void>; unreadCount: number; mobileMenuOpen: boolean; setMobileMenuOpen: (open: boolean) => void; }> = ({
+  isLoggedIn,
+  userInfo,
+  onLogout,
+  unreadCount,
+  mobileMenuOpen,
+  setMobileMenuOpen,
+}) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const selectedKey = ROUTE_TO_KEY[location.pathname] || 'myWorkbench'
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userInfo, setUserInfo] = useState<any>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const selectedKey = routeToKey(location.pathname)
   const {
     token: { colorBgContainer },
   } = theme.useToken()
 
-  // 检查登录状态
-  useEffect(() => {
-    checkLoginStatus()
-  }, [])
-
-  // 获取未读通知数量
-  useEffect(() => {
-    if (isLoggedIn && userInfo?.member_name) {
-      const fetchUnreadCount = async () => {
-        try {
-          const response = await axios.get(`/api/notifications/unread-count/${userInfo.member_name}`)
-          if (response.data.success) {
-            setUnreadCount(response.data.unread_count)
-          }
-        } catch (error) {
-          console.error('获取未读通知失败:', error)
-        }
-      }
-      
-      fetchUnreadCount()
-      const interval = setInterval(fetchUnreadCount, 30000) // 每30秒刷新
-      return () => clearInterval(interval)
-    }
-  }, [isLoggedIn, userInfo])
-
-  const checkLoginStatus = async () => {
-    const sessionId = localStorage.getItem('session_id')
-    if (sessionId) {
-      try {
-        const response = await axios.get('/api/auth/verify', {
-          params: { session_id: sessionId }
-        })
-        
-        if (response.data.valid) {
-          setIsLoggedIn(true)
-          setUserInfo(response.data)
-        } else {
-          // 会话无效，清除本地存储
-          localStorage.clear()
-          setIsLoggedIn(false)
-        }
-      } catch (error) {
-        console.error('验证会话失败')
-        localStorage.clear()
-        setIsLoggedIn(false)
-      }
-    }
-  }
-
-  const handleLoginSuccess = (sessionInfo: any) => {
-    setIsLoggedIn(true)
-    setUserInfo(sessionInfo)
-    message.success(`欢迎加入 ${sessionInfo.family_name}!`)
-  }
-
-  const handleLogout = async () => {
-    const sessionId = localStorage.getItem('session_id')
-    if (sessionId) {
-      try {
-        await axios.post('/api/auth/logout', null, {
-          params: { session_id: sessionId }
-        })
-      } catch (error) {
-        console.error('登出失败')
-      }
-    }
-    
-    localStorage.clear()
-    setIsLoggedIn(false)
-    setUserInfo(null)
-    message.success('已退出登录')
-  }
-
-  const menuItems = [
+  const menuItems = useMemo(() => [
     { key: 'myWorkbench', icon: <AppstoreOutlined />, label: '我的工作台' },
     { key: 'chat', icon: <MessageOutlined />, label: '智能对话' },
     { key: 'members', icon: <TeamOutlined />, label: '家庭成员' },
@@ -170,76 +90,36 @@ const App: React.FC = () => {
     { key: 'mcp', icon: <ApiOutlined />, label: 'MCP协议' },
     { key: 'finance', icon: <WalletOutlined />, label: '家庭财务' },
     { key: 'modules', icon: <AppstoreOutlined />, label: '模块中心' },
+    { key: 'wedding', icon: <SafetyCertificateOutlined />, label: '备婚管理' },
+    { key: 'insurance', icon: <SafetyCertificateOutlined />, label: '保险管理' },
+    { key: 'vehicle', icon: <CarOutlined />, label: '车辆管理' },
+    { key: 'fitness', icon: <HeartOutlined />, label: '健身管理' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
-    { 
-      key: 'notifications', 
+    {
+      key: 'notifications',
       icon: (
         <Badge count={unreadCount} offset={[5, -5]}>
           <BellOutlined />
         </Badge>
-      ), 
-      label: '消息通知' 
+      ),
+      label: '消息通知',
     },
-  ]
+  ], [unreadCount])
 
-  const renderContent = () => {
-    switch (selectedKey) {
-      case 'myWorkbench':
-        return <WorkbenchPage />
-      case 'chat':
-        return <ChatPage />
-      case 'members':
-        return <MembersPage />
-      case 'schedule':
-        return <SchedulePage />
-      case 'shopping':
-        return <ShoppingPage />
-      case 'photos':
-        return <PhotosPage />
-      case 'knowledge':
-        return <KnowledgePage />
-      case 'memory':
-        return <MemoryPage />
-      case 'skills':
-        return <SkillsPage />
-      case 'smarthome':
-        return <SmartHomePage />
-      case 'mcp':
-        return <MCPPage />
-      case 'stats':
-        return <StatsPage />
-      case 'finance':
-        return <FinancePage />
-      case 'modules':
-        return <ModulesPage />
-      case 'wedding':
-        return <WeddingPage />
-      case 'insurance':
-        return <InsurancePage />
-      case 'vehicle':
-        return <VehiclePage />
-      case 'fitness':
-        return <FitnessPage />
-      case 'notifications':
-        return <NotificationsPage />
-      default:
-        return <ChatPage />
-    }
-  }
-
-  // 如果未登录，显示登录页面
-  if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />
-  }
+  const title = menuItems.find(item => item.key === selectedKey)?.label || '家庭管家'
 
   const logoutMenuItems = [
     {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: '退出登录',
-      onClick: handleLogout
-    }
+      onClick: onLogout,
+    },
   ]
+
+  if (!isLoggedIn) {
+    return <Outlet />
+  }
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -254,21 +134,20 @@ const App: React.FC = () => {
           color: 'white',
           fontSize: 18,
           fontWeight: 'bold',
-          flexShrink: 0
+          flexShrink: 0,
         }}>
-          🏡 家庭管家
+          家庭管家
         </div>
         <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 96px)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={({ key }) => {
-            const path = PAGE_ROUTES[key] || '/'
-            navigate(path)
-          }}
-        />
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            onClick={({ key }) => {
+              navigate(PAGE_ROUTES[key] || '/')
+            }}
+          />
         </div>
       </Sider>
       <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -279,39 +158,37 @@ const App: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           height: 64,
-          lineHeight: '64px'
+          lineHeight: '64px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Button className="mobile-menu-btn" type="text" icon={<MenuOutlined />}
               onClick={() => setMobileMenuOpen(true)} style={{ fontSize: 18 }} />
             <div style={{ fontSize: 20, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
-              {menuItems.find(item => item.key === selectedKey)?.label}
+              {title}
             </div>
           </div>
-          
-          {/* 用户信息 */}
-          <Dropdown 
-            menu={{ items: logoutMenuItems }} 
+
+          <Dropdown
+            menu={{ items: logoutMenuItems }}
             placement="bottomRight"
             dropdownRender={(menu) => (
               <div>
-                {/* 用户信息头部 */}
-                <div style={{ 
-                  padding: '16px 20px', 
+                <div style={{
+                  padding: '16px 20px',
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   borderRadius: '12px 12px 0 0',
-                  color: 'white'
+                  color: 'white',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <Avatar 
-                      size={48} 
-                      icon={<UserOutlined />} 
-                      style={{ 
+                    <Avatar
+                      size={48}
+                      icon={<UserOutlined />}
+                      style={{
                         backgroundColor: 'rgba(255,255,255,0.2)',
                         border: '2px solid rgba(255,255,255,0.4)',
                         fontSize: 20,
-                        backdropFilter: 'blur(10px)'
-                      }} 
+                        backdropFilter: 'blur(10px)',
+                      }}
                     />
                     <div>
                       <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 2 }}>
@@ -322,7 +199,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <div style={{ 
+                  <div style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
@@ -330,23 +207,22 @@ const App: React.FC = () => {
                     padding: '6px 12px',
                     borderRadius: 8,
                     fontSize: 13,
-                    backdropFilter: 'blur(10px)'
+                    backdropFilter: 'blur(10px)',
                   }}>
                     <span style={{ opacity: 0.9 }}>家庭号:</span>
-                    <span style={{ 
-                      fontFamily: 'monospace', 
-                      fontWeight: 700, 
+                    <span style={{
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
                       fontSize: 15,
                       letterSpacing: 2,
                       background: 'rgba(255,255,255,0.2)',
                       padding: '2px 8px',
-                      borderRadius: 4
+                      borderRadius: 4,
                     }}>
                       {userInfo?.family_id}
                     </span>
                   </div>
                 </div>
-                {/* 菜单内容 */}
                 {menu}
               </div>
             )}
@@ -363,15 +239,7 @@ const App: React.FC = () => {
                 alignItems: 'center',
                 gap: 8,
                 boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                border: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)'
+                border: 'none',
               }}
             >
               <Avatar
@@ -381,7 +249,7 @@ const App: React.FC = () => {
                   backgroundColor: 'rgba(255,255,255,0.2)',
                   border: '2px solid rgba(255,255,255,0.4)',
                   backdropFilter: 'blur(10px)',
-                  flexShrink: 0
+                  flexShrink: 0,
                 }}
               />
               <div className="header-user-info" style={{ lineHeight: 1.2, color: 'white' }}>
@@ -396,10 +264,10 @@ const App: React.FC = () => {
           </Dropdown>
         </Header>
         <Content style={{ margin: '24px 16px', padding: 24, background: colorBgContainer, overflow: 'auto', height: 'calc(100vh - 64px)' }}>
-          {renderContent()}
+          <Outlet />
         </Content>
       </Layout>
-      <Drawer title="🏡 家庭管家" placement="left" width={240}
+      <Drawer title="家庭管家" placement="left" width={240}
         open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)}
         styles={{ body: { padding: 0 } }}>
         <Menu
@@ -408,13 +276,107 @@ const App: React.FC = () => {
           selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => {
-            const path = PAGE_ROUTES[key] || '/'
-            navigate(path)
+            navigate(PAGE_ROUTES[key] || '/')
             setMobileMenuOpen(false)
           }}
         />
       </Drawer>
     </Layout>
+  )
+}
+
+const App: React.FC = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userInfo, setUserInfo] = useState<any>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    checkLoginStatus()
+  }, [])
+
+  useEffect(() => {
+    if (isLoggedIn && userInfo?.member_name) {
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await axios.get(`/api/notifications/unread-count/${userInfo.member_name}`)
+          if (response.data.success) {
+            setUnreadCount(response.data.unread_count)
+          }
+        } catch (error) {
+          console.error('获取未读通知失败:', error)
+        }
+      }
+
+      fetchUnreadCount()
+      const interval = setInterval(fetchUnreadCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isLoggedIn, userInfo])
+
+  const checkLoginStatus = async () => {
+    const sessionId = localStorage.getItem('session_id')
+    if (sessionId) {
+      try {
+        const response = await axios.get('/api/auth/verify', {
+          params: { session_id: sessionId },
+        })
+
+        if (response.data.valid) {
+          setIsLoggedIn(true)
+          setUserInfo(response.data)
+        } else {
+          localStorage.clear()
+          setIsLoggedIn(false)
+        }
+      } catch (error) {
+        console.error('验证会话失败')
+        localStorage.clear()
+        setIsLoggedIn(false)
+      }
+    }
+  }
+
+  const handleLoginSuccess = (sessionInfo: any) => {
+    setIsLoggedIn(true)
+    setUserInfo(sessionInfo)
+    message.success(`欢迎加入 ${sessionInfo.family_name}!`)
+    navigate('/')
+  }
+
+  const handleLogout = async () => {
+    const sessionId = localStorage.getItem('session_id')
+    if (sessionId) {
+      try {
+        await axios.post('/api/auth/logout', null, {
+          params: { session_id: sessionId },
+        })
+      } catch (error) {
+        console.error('登出失败')
+      }
+    }
+
+    localStorage.clear()
+    setIsLoggedIn(false)
+    setUserInfo(null)
+    message.success('已退出登录')
+    navigate('/login')
+  }
+
+  if (!isLoggedIn) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />
+  }
+
+  return (
+    <AppShell
+      isLoggedIn={isLoggedIn}
+      userInfo={userInfo}
+      onLogout={handleLogout}
+      unreadCount={unreadCount}
+      mobileMenuOpen={mobileMenuOpen}
+      setMobileMenuOpen={setMobileMenuOpen}
+    />
   )
 }
 
