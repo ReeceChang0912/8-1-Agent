@@ -133,6 +133,13 @@ export const lifeModulesAPI = {
     update: (id: number, data: any) => api.put(`/modules/housing/${id}`, data),
     remove: (id: number, familyId?: string) => api.delete(`/modules/housing/${id}`, { params: { family_id: familyId } }),
   },
+  health: {
+    list: (familyId?: string) => api.get('/modules/health', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/health/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/health', data),
+    update: (id: number, data: any) => api.put(`/modules/health/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/health/${id}`, { params: { family_id: familyId } }),
+  },
 }
 
 // 知识库

@@ -50,6 +50,7 @@ const PAGE_ROUTES: Record<string, string> = {
   fitness: '/modules/fitness',
   documents: '/modules/documents',
   housing: '/modules/housing',
+  health: '/modules/health',
 }
 
 const ROUTE_TO_KEY: Record<string, string> = {}
@@ -98,6 +99,7 @@ const AppShell: React.FC<{ isLoggedIn: boolean; userInfo: any; onLogout: () => P
     { key: 'fitness', icon: <HeartOutlined />, label: '健身管理' },
     { key: 'documents', icon: <SafetyCertificateOutlined />, label: '证件管理' },
     { key: 'housing', icon: <HomeOutlined />, label: '住房管理' },
+    { key: 'health', icon: <HeartOutlined />, label: '健康管理' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
     {
       key: 'notifications',

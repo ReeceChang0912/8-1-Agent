@@ -171,6 +171,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "insurance": None,
             "documents": None,
             "housing": None,
+            "health": None,
             "vehicle": None,
             "fitness": None,
             "finance": None,
@@ -189,6 +190,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
     insurance_items = db.get_insurance_policies(family_id=family_id)
     document_items = db.get_document_records(family_id=family_id)
     housing_items = db.get_housing_records(family_id=family_id)
+    health_items = db.get_health_records(family_id=family_id)
     vehicle_items = db.get_vehicle_records(family_id=family_id)
     fitness_items = db.get_fitness_records(family_id=family_id)
     finance_summary = db.get_monthly_summary(now.year, now.month)
@@ -223,6 +225,14 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "utility_count": sum(1 for item in housing_items if item.get("record_type") == "utility"),
             "repair_count": sum(1 for item in housing_items if item.get("record_type") == "repair"),
             "total_amount": round(sum(float(item.get("amount") or 0) for item in housing_items), 2),
+        },
+        "health": {
+            "total_count": len(health_items),
+            "exam_count": sum(1 for item in health_items if item.get("record_type") == "exam"),
+            "medication_count": sum(1 for item in health_items if item.get("record_type") == "medication"),
+            "followup_count": sum(1 for item in health_items if item.get("record_type") == "followup"),
+            "chronic_count": sum(1 for item in health_items if item.get("record_type") == "chronic"),
+            "abnormal_count": sum(1 for item in health_items if item.get("record_type") == "exam" and item.get("status") == "异常"),
         },
         "vehicle": {
             "vehicle_count": sum(1 for item in vehicle_items if item.get("record_type") == "vehicle"),

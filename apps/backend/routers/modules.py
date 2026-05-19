@@ -120,11 +120,11 @@ MODULES = [
     {
         "id": "health",
         "title": "健康管理",
-        "status": "planned",
+        "status": "ready",
         "category": "life",
         "description": "体检报告、用药、慢病跟踪、复诊安排。",
-        "web_route": "",
-        "miniapp_route": "",
+        "web_route": "/modules/health",
+        "miniapp_route": "/pages/webview/webview",
         "owner": "product",
     },
     {

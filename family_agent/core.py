@@ -351,6 +351,8 @@ class FamilyAgentCore:
             return self._handle_documents_command(args, family_id=family_id)
         elif cmd == '/housing':
             return self._handle_housing_command(args, family_id=family_id)
+        elif cmd == '/health':
+            return self._handle_health_command(args, family_id=family_id)
         elif cmd == '/vehicle':
             return self._handle_vehicle_command(args, family_id=family_id)
         elif cmd == '/fitness':
@@ -369,6 +371,7 @@ class FamilyAgentCore:
                 "  `/insurance list` - 查看保险记录\n"
                 "  `/documents list` - 查看证件记录\n"
                 "  `/housing list` - 查看住房记录\n"
+                "  `/health list` - 查看健康记录\n"
                 "  `/vehicle list` - 查看车辆记录\n"
                 "  `/fitness list` - 查看健身记录\n"
                 "  `/finance summary` - 查看本月财务摘要\n"
@@ -398,6 +401,8 @@ class FamilyAgentCore:
             return self._handle_documents_command('summary', family_id=family_id)
         if ('住房' in text or '房租' in text or '房贷' in text or '物业' in text or '水电' in text or '维修' in text) and any(word in text for word in query_words):
             return self._handle_housing_command('summary', family_id=family_id)
+        if ('健康' in text or '体检' in text or '用药' in text or '复诊' in text or '慢病' in text or '医院' in text) and any(word in text for word in query_words):
+            return self._handle_health_command('summary', family_id=family_id)
         if ('车辆' in text or '保养' in text or '车' in text) and any(word in text for word in query_words):
             return self._handle_vehicle_command('summary', family_id=family_id)
         if ('健身' in text or '训练' in text or '体重' in text or '饮食' in text) and any(word in text for word in query_words):
@@ -546,6 +551,61 @@ class FamilyAgentCore:
             f"- 临近到期：{due_soon}\n"
             f"- 已逾期：{overdue}\n"
             f"- 继续查看可用 `/housing list`"
+        )
+
+    def _handle_health_command(self, args: str, family_id: str = None) -> str:
+        from datetime import datetime
+        if not self.db:
+            return "健康管理模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_health_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/health add 体检报告`"
+            record_type = 'exam'
+            normalized_title = title
+            if any(k in title for k in ['用药', '服药', '药物', '吃药']):
+                record_type = 'medication'
+                normalized_title = re.sub(r'^(用药|服药|药物|吃药)\s*', '', title).strip()
+            elif any(k in title for k in ['复诊', '复查', '回诊', '预约']):
+                record_type = 'followup'
+                normalized_title = re.sub(r'^(复诊|复查|回诊|预约)\s*', '', title).strip()
+            elif any(k in title for k in ['慢病', '高血压', '糖尿病', '慢性病']):
+                record_type = 'chronic'
+                normalized_title = re.sub(r'^(慢病|高血压|糖尿病|慢性病)\s*', '', title).strip()
+            title = normalized_title or title
+            self.db.add_health_record(record_type=record_type, title=title, family_id=family_id or "")
+            return f"已新增健康记录：{title}（{record_type}）"
+        if action == 'list':
+            if not items:
+                return "当前还没有健康记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('status') or '-'}" for item in items[:8]]
+            return "健康记录：\n" + "\n".join(lines)
+        today = datetime.now().date()
+        due_soon = 0
+        overdue = 0
+        for item in items:
+            try:
+                visit = datetime.strptime(item.get('next_visit') or '', "%Y-%m-%d").date()
+            except Exception:
+                visit = None
+            if not visit:
+                continue
+            if visit < today:
+                overdue += 1
+            elif (visit - today).days <= 14:
+                due_soon += 1
+        return (
+            f"健康概览：\n"
+            f"- 总数：{len(items)}\n"
+            f"- 体检：{sum(1 for item in items if item.get('record_type') == 'exam')}\n"
+            f"- 用药：{sum(1 for item in items if item.get('record_type') == 'medication')}\n"
+            f"- 复诊：{sum(1 for item in items if item.get('record_type') == 'followup')}\n"
+            f"- 慢病：{sum(1 for item in items if item.get('record_type') == 'chronic')}\n"
+            f"- 临近复诊：{due_soon}\n"
+            f"- 已逾期：{overdue}\n"
+            f"- 继续查看可用 `/health list`"
         )
 
     def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:

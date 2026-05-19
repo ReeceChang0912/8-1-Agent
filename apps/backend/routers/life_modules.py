@@ -94,6 +94,22 @@ class HousingRecordCreate(BaseModel):
     family_id: str = ""
 
 
+class HealthRecordCreate(BaseModel):
+    record_type: str
+    title: str
+    record_date: str = ""
+    provider: str = ""
+    dosage: str = ""
+    frequency: str = ""
+    weight: float = 0
+    bp_systolic: float = 0
+    bp_diastolic: float = 0
+    next_visit: str = ""
+    status: str = ""
+    note: str = ""
+    family_id: str = ""
+
+
 @router.get("/modules/wedding")
 def list_wedding_items(family_id: str = ""):
     db = get_db()
@@ -406,5 +422,67 @@ def housing_stats(family_id: str = ""):
             1
             for item in items
             if (due := parse_date(item.get("due_date") or "")) and due < today
+        ),
+    }
+
+
+@router.get("/modules/health")
+def list_health_records(family_id: str = ""):
+    db = get_db()
+    return {"items": db.get_health_records(family_id=family_id) if db else []}
+
+
+@router.post("/modules/health")
+def add_health_record(data: HealthRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": True, "id": db.add_health_record(**data.model_dump())}
+
+
+@router.put("/modules/health/{record_id}")
+def update_health_record(record_id: int, data: HealthRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.update_health_record(record_id, **data.model_dump())}
+
+
+@router.delete("/modules/health/{record_id}")
+def delete_health_record(record_id: int, family_id: str = ""):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.delete_health_record(record_id, family_id=family_id)}
+
+
+@router.get("/modules/health/stats")
+def health_stats(family_id: str = ""):
+    db = get_db()
+    items = db.get_health_records(family_id=family_id) if db else []
+    today = datetime.now().date()
+
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    return {
+        "total_count": len(items),
+        "exam_count": sum(1 for item in items if item.get("record_type") == "exam"),
+        "medication_count": sum(1 for item in items if item.get("record_type") == "medication"),
+        "followup_count": sum(1 for item in items if item.get("record_type") == "followup"),
+        "chronic_count": sum(1 for item in items if item.get("record_type") == "chronic"),
+        "abnormal_count": sum(1 for item in items if item.get("record_type") == "exam" and item.get("status") == "异常"),
+        "due_soon_count": sum(
+            1
+            for item in items
+            if (visit := parse_date(item.get("next_visit") or "")) and 0 <= (visit - today).days <= 14
+        ),
+        "overdue_count": sum(
+            1
+            for item in items
+            if (visit := parse_date(item.get("next_visit") or "")) and visit < today
         ),
     }

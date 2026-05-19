@@ -103,16 +103,22 @@ class IntentRecognizer:
             if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_insurance_record', 'confidence': 0.88, 'raw_text': message}
 
-        if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
-            if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
+        if any(k in message for k in ['住房', '房屋', '房子', '房产', '租房', '房租']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
                 return {'intent': 'query_housing', 'confidence': 0.9, 'raw_text': message}
-            if any(k in message for k in ['??', '??', '???', '???', '???']):
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_housing_record', 'confidence': 0.88, 'raw_text': message}
 
-        if any(k in message for k in ['??', '???', '??', '??', '???']):
-            if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
+        if any(k in message for k in ['健康', '体检', '用药', '复诊', '慢病', '就医']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
+                return {'intent': 'query_health', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
+                return {'intent': 'add_health_record', 'confidence': 0.88, 'raw_text': message}
+
+        if any(k in message for k in ['证件', '证照', '身份证', '护照', '驾驶证', '档案']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
                 return {'intent': 'query_documents', 'confidence': 0.9, 'raw_text': message}
-            if any(k in message for k in ['??', '??', '???', '???', '???']):
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_document_record', 'confidence': 0.88, 'raw_text': message}
 
         if any(k in message for k in ['车辆', '保养', '年检']) or ('车' in message and '车险' not in message):
@@ -206,6 +212,12 @@ class TaskExecutor:
 
         elif intent == 'add_housing_record':
             return self._handle_add_housing_record(message, family_id=family_id)
+
+        elif intent == 'query_health':
+            return self._handle_query_health(message, family_id=family_id)
+
+        elif intent == 'add_health_record':
+            return self._handle_add_health_record(message, family_id=family_id)
 
         elif intent == 'query_vehicle':
             return self._handle_query_vehicle(message, family_id=family_id)
@@ -377,14 +389,34 @@ class TaskExecutor:
         return f"✅ 已新增保险记录：{title}\n类型：{record_type}"
 
     def _handle_query_housing(self, message: str, family_id: str = None) -> str:
-        action = 'list' if any(k in message for k in ['??', 'list']) else 'summary'
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细', 'list']) else 'summary'
         return self.agent._handle_housing_command(action, family_id=family_id)
 
     def _handle_add_housing_record(self, message: str, family_id: str = None) -> str:
-        title = re.sub(r'.*(??|??|???|???|???)', '', message).strip('?:?,? ')
-        title = title or '??????'
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的住房记录'
         self.agent.db.add_housing_record(record_type='rent', title=title, family_id=family_id or "")
-        return f"? ????????{title}"
+        return f"✅ 已新增住房记录：{title}"
+
+    def _handle_query_health(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细', 'list']) else 'summary'
+        return self.agent._handle_health_command(action, family_id=family_id)
+
+    def _handle_add_health_record(self, message: str, family_id: str = None) -> str:
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的健康记录'
+        record_type = 'exam'
+        if any(k in message for k in ['用药', '服药', '药物', '吃药']):
+            record_type = 'medication'
+            title = re.sub(r'^(用药|服药|药物|吃药)\s*', '', title).strip() or title
+        elif any(k in message for k in ['复诊', '复查', '回诊', '预约']):
+            record_type = 'followup'
+            title = re.sub(r'^(复诊|复查|回诊|预约)\s*', '', title).strip() or title
+        elif any(k in message for k in ['慢病', '高血压', '糖尿病', '慢性病']):
+            record_type = 'chronic'
+            title = re.sub(r'^(慢病|高血压|糖尿病|慢性病)\s*', '', title).strip() or title
+        self.agent.db.add_health_record(record_type=record_type, title=title, family_id=family_id or "")
+        return f"✅ 已新增健康记录：{title}（{record_type}）"
 
     def _handle_query_vehicle(self, message: str, family_id: str = None) -> str:
         action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'

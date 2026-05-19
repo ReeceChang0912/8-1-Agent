@@ -25,6 +25,7 @@ import VehiclePage from './pages/VehiclePage'
 import FitnessPage from './pages/FitnessPage'
 import DocumentsPage from './pages/DocumentsPage'
 import HousingPage from './pages/HousingPage'
+import HealthPage from './pages/HealthPage'
 import './styles/responsive.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -55,6 +56,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="modules/fitness" element={<FitnessPage />} />
             <Route path="modules/documents" element={<DocumentsPage />} />
             <Route path="modules/housing" element={<HousingPage />} />
+            <Route path="modules/health" element={<HealthPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
