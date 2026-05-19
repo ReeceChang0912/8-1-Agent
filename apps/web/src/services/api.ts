@@ -41,6 +41,10 @@ export const scheduleAPI = {
   add: (date: string, event: string, familyId?: string, member?: string) =>
     api.post('/reminders', { date, event, family_id: familyId, member }),
   remove: (id: number, familyId?: string) => api.delete(`/reminders/${id}`, { params: { family_id: familyId } }),
+  getRecommendations: (memberName: string, date?: string) =>
+    api.get(`/recommendations/${memberName}`, { params: { date } }),
+  getFreeTimes: (memberName: string, date?: string) =>
+    api.get(`/free-times/${memberName}`, { params: { date } }),
 }
 
 // 购物清单
