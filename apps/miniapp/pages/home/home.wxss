@@ -88,3 +88,32 @@
   line-height: 1.5;
   color: #6b7280;
 }
+
+.recent-panel {
+  padding-bottom: 12rpx;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.recent-item {
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  background: #f9fafb;
+  border: 1rpx solid #eef2f7;
+}
+
+.recent-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #111827;
+}
+
+.recent-route {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #6b7280;
+}

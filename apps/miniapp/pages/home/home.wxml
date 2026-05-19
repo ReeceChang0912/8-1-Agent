@@ -17,4 +17,16 @@
       </block>
     </view>
   </view>
+
+  <view class="panel recent-panel" wx:if="{{recentItems.length}}">
+    <view class="panel-title">最近使用</view>
+    <view class="recent-list">
+      <block wx:for="{{recentItems}}" wx:key="route">
+        <view class="recent-item" bindtap="goWebView" data-route="{{item.route}}" data-title="{{item.title}}">
+          <view class="recent-title">{{item.title}}</view>
+          <view class="recent-route">{{item.route}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
 </view>

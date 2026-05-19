@@ -1,4 +1,5 @@
 const app = getApp()
+const RECENT_KEY = 'family_management_recent_routes'
 
 Page({
   data: {
@@ -16,6 +17,12 @@ Page({
   },
 
   openWeb(route, title) {
+    const recentItems = wx.getStorageSync(RECENT_KEY) || []
+    const nextItems = [
+      { route, title, ts: Date.now() },
+      ...recentItems.filter((item) => item.route !== route),
+    ].slice(0, 4)
+    wx.setStorageSync(RECENT_KEY, nextItems)
     wx.navigateTo({
       url: `/pages/webview/webview?route=${encodeURIComponent(route)}&title=${encodeURIComponent(title)}`,
     })

@@ -9,14 +9,37 @@ const shortcuts = [
   { title: '健身', route: '/modules/fitness', desc: '看训练和体重' },
 ]
 
+const RECENT_KEY = 'family_management_recent_routes'
+
 Page({
   data: {
     shortcuts,
+    recentItems: [],
+  },
+
+  onLoad() {
+    this.loadRecentItems()
+  },
+
+  loadRecentItems() {
+    const recentItems = wx.getStorageSync(RECENT_KEY) || []
+    this.setData({ recentItems: recentItems.slice(0, 4) })
+  },
+
+  recordRecentItem(route, title) {
+    const recentItems = wx.getStorageSync(RECENT_KEY) || []
+    const nextItems = [
+      { route, title, ts: Date.now() },
+      ...recentItems.filter((item) => item.route !== route),
+    ].slice(0, 4)
+    wx.setStorageSync(RECENT_KEY, nextItems)
+    this.setData({ recentItems: nextItems })
   },
 
   goWebView(e) {
     const route = e.currentTarget.dataset.route || '/'
     const title = e.currentTarget.dataset.title || '家庭管理'
+    this.recordRecentItem(route, title)
     wx.navigateTo({
       url: `/pages/webview/webview?route=${encodeURIComponent(route)}&title=${encodeURIComponent(title)}`,
     })
