@@ -70,11 +70,11 @@ MODULES = [
     {
         "id": "housing",
         "title": "住房管理",
-        "status": "planned",
+        "status": "ready",
         "category": "life",
         "description": "房贷、租房、物业、水电燃气、维修报修。",
-        "web_route": "",
-        "miniapp_route": "",
+        "web_route": "/modules/housing",
+        "miniapp_route": "/pages/webview/webview",
         "owner": "product",
     },
     {

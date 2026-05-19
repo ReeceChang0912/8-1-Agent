@@ -1,8 +1,9 @@
 """
-Life module APIs for wedding, insurance, vehicle, fitness and documents.
+Life module APIs for wedding, insurance, vehicle, fitness, documents and housing.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from datetime import datetime
 
 router = APIRouter()
 
@@ -77,6 +78,18 @@ class DocumentRecordCreate(BaseModel):
     expiry_date: str = ""
     reminder_days: int = 30
     status: str = "有效"
+    note: str = ""
+    family_id: str = ""
+
+
+class HousingRecordCreate(BaseModel):
+    record_type: str
+    title: str
+    location: str = ""
+    owner: str = ""
+    amount: float = 0
+    due_date: str = ""
+    status: str = ""
     note: str = ""
     family_id: str = ""
 
@@ -332,4 +345,66 @@ def document_stats(family_id: str = ""):
         "active_count": active,
         "expiring_soon_count": expiring_soon,
         "expired_count": expired,
+    }
+
+
+@router.get("/modules/housing")
+def list_housing_records(family_id: str = ""):
+    db = get_db()
+    return {"items": db.get_housing_records(family_id=family_id) if db else []}
+
+
+@router.post("/modules/housing")
+def add_housing_record(data: HousingRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": True, "id": db.add_housing_record(**data.model_dump())}
+
+
+@router.put("/modules/housing/{record_id}")
+def update_housing_record(record_id: int, data: HousingRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.update_housing_record(record_id, **data.model_dump())}
+
+
+@router.delete("/modules/housing/{record_id}")
+def delete_housing_record(record_id: int, family_id: str = ""):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.delete_housing_record(record_id, family_id=family_id)}
+
+
+@router.get("/modules/housing/stats")
+def housing_stats(family_id: str = ""):
+    db = get_db()
+    items = db.get_housing_records(family_id=family_id) if db else []
+    today = datetime.now().date()
+
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    return {
+        "total_count": len(items),
+        "property_count": sum(1 for item in items if item.get("record_type") == "property"),
+        "rent_count": sum(1 for item in items if item.get("record_type") == "rent"),
+        "utility_count": sum(1 for item in items if item.get("record_type") == "utility"),
+        "repair_count": sum(1 for item in items if item.get("record_type") == "repair"),
+        "total_amount": round(sum(float(item.get("amount") or 0) for item in items), 2),
+        "due_soon_count": sum(
+            1
+            for item in items
+            if (due := parse_date(item.get("due_date") or "")) and 0 <= (due - today).days <= 7
+        ),
+        "overdue_count": sum(
+            1
+            for item in items
+            if (due := parse_date(item.get("due_date") or "")) and due < today
+        ),
     }

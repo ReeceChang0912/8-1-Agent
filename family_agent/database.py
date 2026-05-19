@@ -363,6 +363,22 @@ class DatabaseManager:
                 )
             """)
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS housing_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    location TEXT DEFAULT '',
+                    owner TEXT DEFAULT '',
+                    amount NUMERIC(12,2) DEFAULT 0,
+                    due_date TEXT DEFAULT '',
+                    status TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS vehicle_records (
                     id SERIAL PRIMARY KEY,
                     family_id TEXT DEFAULT '',
@@ -1253,6 +1269,44 @@ class DatabaseManager:
     def delete_document_record(self, record_id: int, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute('DELETE FROM document_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_housing_record(self, record_type: str, title: str, location: str = "", owner: str = "",
+                           amount: float = 0, due_date: str = "", status: str = "",
+                           note: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO housing_records (family_id, record_type, title, location, owner, amount, due_date, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, title, location, owner, amount, due_date, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_housing_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM housing_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_housing_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE housing_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_housing_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM housing_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_vehicle_record(self, record_type: str, title: str, plate: str = "",

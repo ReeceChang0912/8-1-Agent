@@ -2,7 +2,7 @@
   <view class="hero">
     <view class="eyebrow">Family Management</view>
     <view class="title">家庭管理系统</view>
-    <view class="desc">聊天、记忆、备婚、保险、证件、车辆、健身，都在一套系统里；Web 版做主工作台，小程序做轻入口。</view>
+    <view class="desc">聊天、记忆、备婚、住房、保险、证件、车辆、健身，都在一套系统里；Web 版做主工作台，小程序做轻入口。</view>
   </view>
 
   <view class="panel">

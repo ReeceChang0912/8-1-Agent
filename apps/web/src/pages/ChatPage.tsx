@@ -74,6 +74,7 @@ const ChatPage: React.FC = () => {
     wedding: null,
     insurance: null,
     documents: null,
+    housing: null,
     vehicle: null,
     fitness: null,
     finance: null,
@@ -88,6 +89,7 @@ const ChatPage: React.FC = () => {
     { cmd: '/wedding', desc: '查看备婚摘要/列表', icon: '💍', example: '/wedding summary' },
     { cmd: '/insurance', desc: '查看保险摘要/列表', icon: '🛡️', example: '/insurance list' },
     { cmd: '/documents', desc: '查看证件摘要/列表', icon: '🪪', example: '/documents list' },
+    { cmd: '/housing', desc: '查看住房摘要/列表', icon: '🏠', example: '/housing summary' },
     { cmd: '/vehicle', desc: '查看车辆摘要/列表', icon: '🚗', example: '/vehicle summary' },
     { cmd: '/fitness', desc: '查看健身摘要/列表', icon: '🏋️', example: '/fitness list' },
     { cmd: '/finance', desc: '查看本月财务摘要', icon: '💰', example: '/finance summary' },
@@ -581,6 +583,7 @@ const ChatPage: React.FC = () => {
     { icon: <MessageOutlined />, label: '看备婚', text: '/wedding summary' },
     { icon: <MessageOutlined />, label: '看保险', text: '/insurance summary' },
     { icon: <MessageOutlined />, label: '看证件', text: '/documents summary' },
+    { icon: <MessageOutlined />, label: '看住房', text: '/housing summary' },
     { icon: <MessageOutlined />, label: '看车辆', text: '/vehicle summary' },
     { icon: <MessageOutlined />, label: '看健身', text: '/fitness summary' },
     { icon: <PictureOutlined />, label: '上传照片', action: 'upload' },
@@ -1109,6 +1112,15 @@ const ChatPage: React.FC = () => {
                     </Space>
                     <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
                       总数 {moduleSummary.documents?.total_count || 0} · 临近到期 {moduleSummary.documents?.expiring_soon_count || 0} · 已失效 {moduleSummary.documents?.expired_count || 0}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>住房</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/housing')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      记录 {moduleSummary.housing?.total_count || 0} · 逾期 {moduleSummary.housing?.overdue_count || 0} · 待到期 {moduleSummary.housing?.due_soon_count || 0}
                     </div>
                   </Card>
                   <Card size="small" style={{ borderRadius: 8 }}>

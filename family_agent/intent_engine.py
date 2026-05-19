@@ -103,6 +103,12 @@ class IntentRecognizer:
             if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_insurance_record', 'confidence': 0.88, 'raw_text': message}
 
+        if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
+            if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
+                return {'intent': 'query_housing', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['??', '??', '???', '???', '???']):
+                return {'intent': 'add_housing_record', 'confidence': 0.88, 'raw_text': message}
+
         if any(k in message for k in ['??', '???', '??', '??', '???']):
             if any(k in message for k in ['??', '??', '??', '??', '??', '??']):
                 return {'intent': 'query_documents', 'confidence': 0.9, 'raw_text': message}
@@ -194,6 +200,12 @@ class TaskExecutor:
 
         elif intent == 'add_document_record':
             return self._handle_add_document_record(message, family_id=family_id)
+
+        elif intent == 'query_housing':
+            return self._handle_query_housing(message, family_id=family_id)
+
+        elif intent == 'add_housing_record':
+            return self._handle_add_housing_record(message, family_id=family_id)
 
         elif intent == 'query_vehicle':
             return self._handle_query_vehicle(message, family_id=family_id)
@@ -363,6 +375,16 @@ class TaskExecutor:
         title = title or '新的保险记录'
         self.agent.db.add_insurance_policy(name=title, title=title, record_type=record_type, family_id=family_id or "")
         return f"✅ 已新增保险记录：{title}\n类型：{record_type}"
+
+    def _handle_query_housing(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['??', 'list']) else 'summary'
+        return self.agent._handle_housing_command(action, family_id=family_id)
+
+    def _handle_add_housing_record(self, message: str, family_id: str = None) -> str:
+        title = re.sub(r'.*(??|??|???|???|???)', '', message).strip('?:?,? ')
+        title = title or '??????'
+        self.agent.db.add_housing_record(record_type='rent', title=title, family_id=family_id or "")
+        return f"? ????????{title}"
 
     def _handle_query_vehicle(self, message: str, family_id: str = None) -> str:
         action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'

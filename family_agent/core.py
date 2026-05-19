@@ -349,6 +349,8 @@ class FamilyAgentCore:
             return self._handle_insurance_command(args, family_id=family_id)
         elif cmd == '/documents':
             return self._handle_documents_command(args, family_id=family_id)
+        elif cmd == '/housing':
+            return self._handle_housing_command(args, family_id=family_id)
         elif cmd == '/vehicle':
             return self._handle_vehicle_command(args, family_id=family_id)
         elif cmd == '/fitness':
@@ -366,6 +368,7 @@ class FamilyAgentCore:
                 "  `/wedding list` - 查看备婚事项\n"
                 "  `/insurance list` - 查看保险记录\n"
                 "  `/documents list` - 查看证件记录\n"
+                "  `/housing list` - 查看住房记录\n"
                 "  `/vehicle list` - 查看车辆记录\n"
                 "  `/fitness list` - 查看健身记录\n"
                 "  `/finance summary` - 查看本月财务摘要\n"
@@ -393,6 +396,8 @@ class FamilyAgentCore:
             return self._handle_insurance_command('summary', family_id=family_id)
         if ('证件' in text or '身份证' in text or '护照' in text or '驾照' in text) and any(word in text for word in query_words):
             return self._handle_documents_command('summary', family_id=family_id)
+        if ('住房' in text or '房租' in text or '房贷' in text or '物业' in text or '水电' in text or '维修' in text) and any(word in text for word in query_words):
+            return self._handle_housing_command('summary', family_id=family_id)
         if ('车辆' in text or '保养' in text or '车' in text) and any(word in text for word in query_words):
             return self._handle_vehicle_command('summary', family_id=family_id)
         if ('健身' in text or '训练' in text or '体重' in text or '饮食' in text) and any(word in text for word in query_words):
@@ -496,6 +501,51 @@ class FamilyAgentCore:
             f"- 临近到期：{expiring_soon}\n"
             f"- 已失效：{expired}\n"
             f"- 继续查看可用 `/documents list`"
+        )
+
+    def _handle_housing_command(self, args: str, family_id: str = None) -> str:
+        from datetime import datetime
+        if not self.db:
+            return "住房管理模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_housing_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/housing add 本月房租`"
+            self.db.add_housing_record(record_type='rent', title=title, family_id=family_id or "")
+            return f"已新增住房记录：{title}"
+        if action == 'list':
+            if not items:
+                return "当前还没有住房记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('status') or '-'}" for item in items[:8]]
+            return "住房记录：\n" + "\n".join(lines)
+        today = datetime.now().date()
+        due_soon = 0
+        overdue = 0
+        for item in items:
+            due = None
+            try:
+                if item.get('due_date'):
+                    due = datetime.strptime(item.get('due_date'), "%Y-%m-%d").date()
+            except Exception:
+                due = None
+            if not due:
+                continue
+            if due < today:
+                overdue += 1
+            elif (due - today).days <= 7:
+                due_soon += 1
+        return (
+            f"住房概览：\n"
+            f"- 总数：{len(items)}\n"
+            f"- 房屋档案：{sum(1 for item in items if item.get('record_type') == 'property')}\n"
+            f"- 房租：{sum(1 for item in items if item.get('record_type') == 'rent')}\n"
+            f"- 水电物业：{sum(1 for item in items if item.get('record_type') == 'utility')}\n"
+            f"- 维修报修：{sum(1 for item in items if item.get('record_type') == 'repair')}\n"
+            f"- 临近到期：{due_soon}\n"
+            f"- 已逾期：{overdue}\n"
+            f"- 继续查看可用 `/housing list`"
         )
 
     def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:

@@ -49,6 +49,7 @@ const PAGE_ROUTES: Record<string, string> = {
   vehicle: '/modules/vehicle',
   fitness: '/modules/fitness',
   documents: '/modules/documents',
+  housing: '/modules/housing',
 }
 
 const ROUTE_TO_KEY: Record<string, string> = {}
@@ -96,6 +97,7 @@ const AppShell: React.FC<{ isLoggedIn: boolean; userInfo: any; onLogout: () => P
     { key: 'vehicle', icon: <CarOutlined />, label: '车辆管理' },
     { key: 'fitness', icon: <HeartOutlined />, label: '健身管理' },
     { key: 'documents', icon: <SafetyCertificateOutlined />, label: '证件管理' },
+    { key: 'housing', icon: <HomeOutlined />, label: '住房管理' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
     {
       key: 'notifications',
