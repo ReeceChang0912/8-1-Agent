@@ -17,6 +17,13 @@ const iconMap: Record<string, React.ReactNode> = {
   insurance: <SafetyCertificateOutlined />,
   vehicle: <CarOutlined />,
   fitness: <HeartOutlined />,
+  housing: <CalendarOutlined />,
+  documents: <SafetyCertificateOutlined />,
+  schedule: <CalendarOutlined />,
+  chores: <AppstoreOutlined />,
+  shopping: <WalletOutlined />,
+  health: <HeartOutlined />,
+  travel: <CalendarOutlined />,
 }
 
 const ModulesPage: React.FC = () => {
@@ -49,6 +56,8 @@ const ModulesPage: React.FC = () => {
     const order = ['finance', 'wedding', 'insurance', 'vehicle', 'fitness']
     return order.map(id => modules.find(item => item.id === id)).filter(Boolean)
   }, [modules])
+
+  const roadmap = useMemo(() => modules.filter(item => item.status !== 'ready'), [modules])
 
   const filteredModules = useMemo(() => {
     const q = keyword.trim().toLowerCase()
@@ -141,6 +150,41 @@ const ModulesPage: React.FC = () => {
                   <Button type="primary" icon={<ArrowRightOutlined />} onClick={() => openModule(module)}>
                     进入模块
                   </Button>
+                </Card>
+              </Col>
+            )
+          })}
+        </Row>
+      </Card>
+
+      <Card style={{ marginBottom: 16, borderRadius: 8 }} bodyStyle={{ paddingBottom: 8 }}>
+        <Title level={4} style={{ marginTop: 0 }}>家庭管理路线图</Title>
+        <Paragraph style={{ marginTop: 0, marginBottom: 16, maxWidth: 880 }}>
+          先把你真正会长期用的东西铺出来。已上线的是主干，下面这些是下一步很自然会长出来的家庭管理能力。
+        </Paragraph>
+        <Row gutter={[16, 16]}>
+          {roadmap.map((module: any) => {
+            const meta = statusMeta[module.status] || statusMeta.planned
+            return (
+              <Col xs={24} md={12} xl={8} key={module.id}>
+                <Card size="small" style={{ borderRadius: 8, height: '100%' }}>
+                  <Space align="start" style={{ marginBottom: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f5f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {iconMap[module.id] || <AppstoreOutlined />}
+                    </div>
+                    <div>
+                      <Space wrap>
+                        <Text strong>{module.title}</Text>
+                        <Tag color={meta.color} icon={meta.icon}>{meta.label}</Tag>
+                      </Space>
+                      <div style={{ marginTop: 4, color: '#667085' }}>{module.description}</div>
+                    </div>
+                  </Space>
+                  <Space wrap>
+                    <Tag>{module.category}</Tag>
+                    <Tag>Owner: {module.owner}</Tag>
+                    {module.web_route ? <Tag color="blue">Web 可直达</Tag> : <Tag>待规划页面</Tag>}
+                  </Space>
                 </Card>
               </Col>
             )
