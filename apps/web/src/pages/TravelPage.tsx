@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Card, Row, Col, Statistic, Tabs, List, Tag, Button, Modal, Form, Input, InputNumber, DatePicker, Space, Typography, message, Empty, Spin, Select } from 'antd'
 import { CalendarOutlined, DollarOutlined, CheckCircleOutlined, PlusOutlined, DeleteOutlined, EditOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { lifeModulesAPI } from '../services/api'
+import { lifeModulesAPI, membersAPI } from '../services/api'
 
 const { Text, Paragraph, Title } = Typography
 
@@ -23,6 +23,8 @@ const TravelPage: React.FC = () => {
   const [items, setItems] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [keyword, setKeyword] = useState('')
+  const [members, setMembers] = useState<any[]>([])
+  const [memberFilter, setMemberFilter] = useState('all')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -43,6 +45,10 @@ const TravelPage: React.FC = () => {
 
   useEffect(() => { load() }, [])
 
+  useEffect(() => {
+    membersAPI.getAll().then(res => setMembers(res.data.members || [])).catch(() => setMembers([]))
+  }, [])
+
   const grouped = useMemo(() => ({
     itinerary: items.filter(item => item.record_type === 'itinerary'),
     booking: items.filter(item => item.record_type === 'booking'),
@@ -55,7 +61,8 @@ const TravelPage: React.FC = () => {
     if (!q) return grouped
     const filterItems = (list: any[]) =>
       list.filter(item =>
-        `${item.title || ''} ${item.destination || ''} ${item.companion || ''} ${item.provider || ''} ${item.status || ''} ${item.note || ''}`.toLowerCase().includes(q),
+        `${item.title || ''} ${item.destination || ''} ${item.companion || ''} ${item.provider || ''} ${item.status || ''} ${item.note || ''}`.toLowerCase().includes(q)
+        && (memberFilter === 'all' || `${item.companion || ''}`.includes(memberFilter)),
       )
     return {
       itinerary: filterItems(grouped.itinerary),
@@ -63,7 +70,7 @@ const TravelPage: React.FC = () => {
       budget: filterItems(grouped.budget),
       packing: filterItems(grouped.packing),
     }
-  }, [grouped, keyword])
+  }, [grouped, keyword, memberFilter])
 
   const currentConfig = tabConfig[tab]
 
@@ -133,13 +140,16 @@ const TravelPage: React.FC = () => {
       </Card>
 
       <Card extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增{currentConfig.title}</Button>} style={{ borderRadius: 8 }}>
-        <Input.Search
-          allowClear
-          placeholder="搜索标题、目的地、同行人、备注"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={{ marginBottom: 16, maxWidth: 360 }}
-        />
+        <Space wrap style={{ marginBottom: 16 }}>
+          <Input.Search
+            allowClear
+            placeholder="搜索标题、目的地、同行人、备注"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            style={{ width: 360 }}
+          />
+          <Select value={memberFilter} onChange={setMemberFilter} style={{ width: 180 }} options={[{ label: '全部成员', value: 'all' }, ...members.map(member => ({ label: member.name, value: member.name }))]} />
+        </Space>
         {loading ? <Spin /> : (
           <Tabs activeKey={tab} onChange={(value) => setTab(value as typeof tab)} items={[
             {

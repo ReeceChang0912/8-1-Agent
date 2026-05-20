@@ -1,25 +1,104 @@
 <view class="page">
   <view class="hero">
-    <view class="eyebrow">Family Management</view>
-    <view class="title">家庭管理系统</view>
-    <view class="desc">聊天、记忆、备婚、住房、健康、旅行、保险、证件、车辆、健身，都在一套系统里；Web 版做主工作台，小程序做轻入口。</view>
-  </view>
-
-  <view class="panel">
-    <view class="panel-title">快捷入口</view>
-    <view class="shortcut-grid">
-      <block wx:for="{{shortcuts}}" wx:key="route">
-        <view class="shortcut-card" bindtap="goWebView" data-route="{{item.route}}" data-title="{{item.title}}">
-          <view class="shortcut-badge">{{item.title}}</view>
-          <view class="shortcut-title">{{item.title}}</view>
-          <view class="shortcut-desc">{{item.desc}}</view>
-        </view>
-      </block>
+    <view class="hero-top">
+      <view>
+        <view class="eyebrow">Family Operating System</view>
+        <view class="title">{{familyName || '家庭工作台'}}</view>
+      </view>
+      <view class="family-badge">{{familyId}}</view>
+    </view>
+    <view class="desc">{{memberName || '家人'}}，这里是家庭协作入口。所有管理都能直接打开，也能从 Chat 一句话发起。</view>
+    <view class="hero-actions">
+      <button class="hero-btn primary-btn" bindtap="startNewChat">打开 Chat</button>
+      <button class="hero-btn ghost-btn" bindtap="goAiAction" data-prompt="/modules" data-title="全部模块">全模块</button>
+    </view>
+    <view class="stats">
+      <view class="stat">
+        <view class="stat-num">{{recentChats.length}}</view>
+        <view class="stat-label">最近会话</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{featureCount}}</view>
+        <view class="stat-label">Web 功能</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">AI</view>
+        <view class="stat-label">对话操作</view>
+      </view>
     </view>
   </view>
 
-  <view class="panel recent-panel" wx:if="{{recentItems.length}}">
-    <view class="panel-title">最近使用</view>
+  <view class="section action-section">
+    <view class="section-head">
+      <view>
+        <view class="section-title">Chat 联动管理</view>
+        <view class="section-subtitle">点一下，把指令带进对话框</view>
+      </view>
+      <view class="section-note" bindtap="startNewChat">新对话</view>
+    </view>
+    <scroll-view class="action-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="action-track">
+        <block wx:for="{{aiActions}}" wx:key="title">
+          <view class="action-card" bindtap="goAiAction" data-prompt="{{item.prompt}}" data-title="{{item.title}}">
+            <view class="action-title">{{item.title}}</view>
+            <view class="action-desc">{{item.desc}}</view>
+            <view class="action-prompt">{{item.prompt}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <block wx:for="{{featureGroups}}" wx:key="title">
+    <view class="section">
+      <view class="section-head">
+        <view>
+          <view class="section-title">{{item.title}}</view>
+          <view class="section-subtitle">{{item.note}}</view>
+        </view>
+      </view>
+      <view class="grid">
+        <block wx:for="{{item.items}}" wx:for-item="feature" wx:key="route">
+          <view class="grid-card accent-{{feature.accent}}" bindtap="goWebView" data-route="{{feature.route}}" data-title="{{feature.title}}">
+            <view class="grid-title">{{feature.title}}</view>
+            <view class="grid-desc">{{feature.desc}}</view>
+          </view>
+        </block>
+      </view>
+    </view>
+  </block>
+
+  <view class="section">
+    <view class="section-head">
+      <view>
+        <view class="section-title">最近会话</view>
+        <view class="section-subtitle">继续上次的家庭协作</view>
+      </view>
+      <view class="section-note" bindtap="startNewChat">继续聊聊</view>
+    </view>
+    <view wx:if="{{loadingChats}}" class="hint">正在加载最近会话...</view>
+    <view wx:elif="{{recentChats.length}}">
+      <block wx:for="{{recentChats}}" wx:key="session_id">
+        <view class="chat-card" bindtap="openChatSession" data-sessionid="{{item.session_id}}" data-title="{{item.title}}">
+          <view class="chat-top">
+            <view class="chat-title">{{item.title}}</view>
+            <view class="chat-count">{{item.message_count}} 条</view>
+          </view>
+          <view class="chat-desc">{{item.last_message}}</view>
+          <view class="chat-meta">{{item.updated_at}}</view>
+        </view>
+      </block>
+    </view>
+    <view wx:else class="hint">还没有最近会话，先开一条吧。</view>
+  </view>
+
+  <view class="section" wx:if="{{recentItems.length}}">
+    <view class="section-head">
+      <view>
+        <view class="section-title">最近访问</view>
+        <view class="section-subtitle">快速回到常用页面</view>
+      </view>
+    </view>
     <view class="recent-list">
       <block wx:for="{{recentItems}}" wx:key="route">
         <view class="recent-item" bindtap="goWebView" data-route="{{item.route}}" data-title="{{item.title}}">

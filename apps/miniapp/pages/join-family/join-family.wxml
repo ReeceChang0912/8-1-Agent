@@ -1,0 +1,23 @@
+<view class="page">
+  <view class="top-strip"></view>
+  <view class="hero">
+    <view class="title">加入家庭</view>
+    <view class="subtitle">输入家庭号和你的成员名，加入已有家庭空间。</view>
+  </view>
+
+  <view class="panel">
+    <view class="field">
+      <view class="field-label">家庭号</view>
+      <input class="input" placeholder="请输入家庭号" value="{{joinFamilyId}}" data-field="joinFamilyId" bindinput="setField" disabled="{{!!inviteCode}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">邀请码</view>
+      <input class="input" placeholder="可选" value="{{inviteCode}}" data-field="inviteCode" bindinput="setField" disabled="{{!!inviteCode}}" />
+    </view>
+    <view class="field">
+      <view class="field-label">成员名</view>
+      <input class="input" placeholder="请输入你的名字" value="{{joinMemberName}}" data-field="joinMemberName" bindinput="setField" />
+    </view>
+    <button class="primary" loading="{{loading}}" bindtap="joinFamily">加入家庭</button>
+  </view>
+</view>

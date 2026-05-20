@@ -52,6 +52,7 @@ const PAGE_ROUTES: Record<string, string> = {
   housing: '/modules/housing',
   health: '/modules/health',
   travel: '/modules/travel',
+  chores: '/modules/chores',
 }
 
 const ROUTE_TO_KEY: Record<string, string> = {}
@@ -102,6 +103,7 @@ const AppShell: React.FC<{ isLoggedIn: boolean; userInfo: any; onLogout: () => P
     { key: 'housing', icon: <HomeOutlined />, label: '住房管理' },
     { key: 'health', icon: <HeartOutlined />, label: '健康管理' },
     { key: 'travel', icon: <CalendarOutlined />, label: '旅行管理' },
+    { key: 'chores', icon: <AppstoreOutlined />, label: '家务分工' },
     { key: 'stats', icon: <BarChartOutlined />, label: '统计信息' },
     {
       key: 'notifications',
@@ -299,10 +301,51 @@ const App: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     checkLoginStatus()
   }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const sessionId = params.get('session_id')
+    const familyId = params.get('family_id')
+    const memberName = params.get('member_name')
+    const familyName = params.get('family_name')
+    const hasAuthParams = !!(sessionId || familyId || memberName || familyName)
+
+    if (!hasAuthParams) return
+
+    if (sessionId) localStorage.setItem('session_id', sessionId)
+    if (familyId) localStorage.setItem('family_id', familyId)
+    if (memberName) localStorage.setItem('member_name', memberName)
+    if (familyName) localStorage.setItem('family_name', familyName)
+
+    const cleaned = new URLSearchParams(location.search)
+    cleaned.delete('session_id')
+    cleaned.delete('family_id')
+    cleaned.delete('member_name')
+    cleaned.delete('family_name')
+    navigate(
+      {
+        pathname: location.pathname,
+        search: cleaned.toString() ? `?${cleaned.toString()}` : '',
+      },
+      { replace: true },
+    )
+
+    if (sessionId) {
+      checkLoginStatus()
+    } else if (memberName && familyId) {
+      setIsLoggedIn(true)
+      setUserInfo({
+        member_name: memberName,
+        family_id: familyId,
+        family_name: familyName || '',
+      })
+    }
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     if (isLoggedIn && userInfo?.member_name) {
@@ -350,7 +393,8 @@ const App: React.FC = () => {
     setIsLoggedIn(true)
     setUserInfo(sessionInfo)
     message.success(`欢迎加入 ${sessionInfo.family_name}!`)
-    navigate('/')
+    const hasOnboarding = localStorage.getItem('family_onboarding_dismissed')
+    navigate(hasOnboarding ? '/' : '/members')
   }
 
   const handleLogout = async () => {

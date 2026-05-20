@@ -26,6 +26,12 @@ export const chatAPI = {
 // 成员管理
 export const membersAPI = {
   getAll: () => api.get('/members'),
+  getStats: (familyId?: string) => api.get('/members/stats', { params: { family_id: familyId } }),
+  createInvite: (familyId: string, creator: string) =>
+    api.post('/members/invite/create', null, { params: { family_id: familyId, creator } }),
+  validateInvite: (code: string) => api.get(`/members/invite/${code}`),
+  getInviteQrCode: (code: string) => api.get(`/members/invite/${code}/qrcode`, { responseType: 'blob' }),
+  update: (name: string, data: any) => api.put(`/members/${name}`, data),
   add: (data: any) => {
     const sessionId = localStorage.getItem('session_id')
     return api.post('/members', data, {
@@ -146,6 +152,13 @@ export const lifeModulesAPI = {
     add: (data: any) => api.post('/modules/travel', data),
     update: (id: number, data: any) => api.put(`/modules/travel/${id}`, data),
     remove: (id: number, familyId?: string) => api.delete(`/modules/travel/${id}`, { params: { family_id: familyId } }),
+  },
+  chores: {
+    list: (familyId?: string) => api.get('/modules/chores', { params: { family_id: familyId } }),
+    stats: (familyId?: string) => api.get('/modules/chores/stats', { params: { family_id: familyId } }),
+    add: (data: any) => api.post('/modules/chores', data),
+    update: (id: number, data: any) => api.put(`/modules/chores/${id}`, data),
+    remove: (id: number, familyId?: string) => api.delete(`/modules/chores/${id}`, { params: { family_id: familyId } }),
   },
 }
 

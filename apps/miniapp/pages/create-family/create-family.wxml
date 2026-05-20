@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="top-strip"></view>
+  <view class="hero">
+    <view class="title">创建家庭</view>
+    <view class="subtitle">建立一个家庭空间，之后再邀请其他成员加入。</view>
+  </view>
+
+  <view class="panel">
+    <view class="field">
+      <view class="field-label">家庭名称</view>
+      <input class="input" placeholder="例如 我的小家" value="{{createFamilyName}}" data-field="createFamilyName" bindinput="setField" />
+    </view>
+    <view class="field">
+      <view class="field-label">管理员名</view>
+      <input class="input" placeholder="请输入你的名字" value="{{createAdminName}}" data-field="createAdminName" bindinput="setField" />
+    </view>
+    <button class="primary" loading="{{loading}}" bindtap="createFamily">创建家庭</button>
+  </view>
+</view>

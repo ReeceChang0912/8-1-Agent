@@ -1,1 +1,5 @@
-<web-view src="{{webviewUrl}}"></web-view>
+<view wx:if="{{configError}}" class="error-page">
+  <view class="error-title">配置未完成</view>
+  <view class="error-desc">{{configError}}</view>
+</view>
+<web-view wx:else src="{{webviewUrl}}"></web-view>

@@ -1,5 +1,5 @@
-"""
-聊天相关路由
+﻿"""
+鑱婂ぉ鐩稿叧璺敱
 """
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
@@ -50,6 +50,25 @@ def get_chat_history() -> ChatHistoryManager:
     if _chat_history is None:
         _chat_history = ChatHistoryManager(db_manager=get_db_manager())
     return _chat_history
+
+
+def _split_member_refs(value) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    text = str(value).strip()
+    if not text:
+        return []
+    for sep in [",", "/", "|", ";"]:
+        text = text.replace(sep, ",")
+    return [part.strip() for part in text.split(",") if part.strip()]
+
+
+def _matches_member(value, member_name: str) -> bool:
+    if not member_name:
+        return False
+    return any(member_name.lower() == ref.lower() for ref in _split_member_refs(value))
 
 
 class ConnectionManager:
@@ -103,7 +122,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception as e:
-        print(f"WebSocket错误: {e}")
+        print(f"WebSocket閿欒: {e}")
         manager.disconnect(user_id)
 
 
@@ -173,6 +192,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "housing": None,
             "health": None,
             "travel": None,
+            "chores": None,
             "vehicle": None,
             "fitness": None,
             "finance": None,
@@ -193,10 +213,32 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
     housing_items = db.get_housing_records(family_id=family_id)
     health_items = db.get_health_records(family_id=family_id)
     travel_items = db.get_travel_records(family_id=family_id)
+    chore_items = db.get_chore_records(family_id=family_id)
     vehicle_items = db.get_vehicle_records(family_id=family_id)
     fitness_items = db.get_fitness_records(family_id=family_id)
+    shopping_items = get_agent().shopping_list.get_items(family_id=family_id)
     finance_summary = db.get_monthly_summary(now.year, now.month)
     memory_items = get_agent().memory_manager.list_memories(limit=5, user_id=user_id, family_id=family_id)
+    agent = get_agent()
+    member_stats = []
+    for member in agent.members.values():
+        name = member.name
+        member_shopping = [item for item in shopping_items if (item.get("added_by") or "") == name]
+        member_chores = [item for item in chore_items if (item.get("assignee") or "") == name]
+        member_travel = [item for item in travel_items if _matches_member(item.get("companion"), name)]
+        try:
+            task_stats = agent.task_manager.get_statistics(name, family_id=family_id) or {}
+        except Exception:
+            task_stats = {}
+        member_stats.append({
+            "name": name,
+            "role": member.role,
+            "shopping": len(member_shopping),
+            "chores": len(member_chores),
+            "travel": len(member_travel),
+            "tasks": int((task_stats.get("received") or {}).get("total") or 0) if isinstance(task_stats, dict) else 0,
+        })
+    member_stats.sort(key=lambda item: (-item["shopping"] - item["chores"] - item["travel"] - item["tasks"], item["name"]))
 
     return {
         "wedding": {
@@ -234,7 +276,7 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "medication_count": sum(1 for item in health_items if item.get("record_type") == "medication"),
             "followup_count": sum(1 for item in health_items if item.get("record_type") == "followup"),
             "chronic_count": sum(1 for item in health_items if item.get("record_type") == "chronic"),
-            "abnormal_count": sum(1 for item in health_items if item.get("record_type") == "exam" and item.get("status") == "异常"),
+            "abnormal_count": sum(1 for item in health_items if item.get("record_type") == "exam" and item.get("status") == "寮傚父"),
         },
         "travel": {
             "total_count": len(travel_items),
@@ -251,6 +293,14 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
                 and 0 <= (travel_date - now.date()).days <= 30
             ),
         },
+        "chores": {
+            "total_count": len(chore_items),
+            "task_count": sum(1 for item in chore_items if item.get("record_type") == "task"),
+            "rotation_count": sum(1 for item in chore_items if item.get("record_type") == "rotation"),
+            "supply_count": sum(1 for item in chore_items if item.get("record_type") == "supply"),
+            "checklist_count": sum(1 for item in chore_items if item.get("record_type") == "checklist"),
+            "done_count": sum(1 for item in chore_items if item.get("status") in {"已完成", "已打卡", "已补货", "completed", "done", "finished"}),
+        },
         "vehicle": {
             "vehicle_count": sum(1 for item in vehicle_items if item.get("record_type") == "vehicle"),
             "expense_total": round(sum(float(item.get("amount") or 0) for item in vehicle_items if item.get("record_type") == "expense"), 2),
@@ -259,6 +309,15 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             "workout_count": sum(1 for item in fitness_items if item.get("record_type") == "workout"),
             "avg_weight": round(sum(float(item.get("weight") or 0) for item in fitness_items if item.get("record_type") == "metric") / max(1, sum(1 for item in fitness_items if item.get("record_type") == "metric")), 1) if any(item.get("record_type") == "metric" for item in fitness_items) else 0,
             "protein_today": round(sum(float(item.get("protein") or 0) for item in fitness_items if item.get("record_type") == "meal"), 2),
+        },
+        "shopping": {
+            "total_count": len(shopping_items),
+            "pending_count": sum(1 for item in shopping_items if item.get("status") != "purchased"),
+            "favorite_count": sum(1 for item in shopping_items if item.get("is_favorite")),
+            "restock_count": sum(
+                1 for item in shopping_items
+                if float(item.get("current_stock") or 0) <= float(item.get("restock_threshold") or 0)
+            ),
         },
         "finance": finance_summary,
         "memory": [
@@ -270,6 +329,10 @@ async def get_chat_context_endpoint(user_id: str, family_id: str = ""):
             }
             for item in memory_items[:5]
         ],
+        "members": {
+            "total": len(agent.members),
+            "top": member_stats[:3],
+        },
     }
 
 

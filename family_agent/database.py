@@ -107,6 +107,12 @@ class DatabaseManager:
                 )
             """)
             cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS unit TEXT DEFAULT '件'")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS current_stock NUMERIC(12,2) DEFAULT 0")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS target_stock NUMERIC(12,2) DEFAULT 0")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS restock_threshold NUMERIC(12,2) DEFAULT 0")
+            cursor.execute("ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT FALSE")
             cursor.execute("ALTER TABLE reminders ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
 
             # 聊天历史表
@@ -289,6 +295,54 @@ class DatabaseManager:
             """)
             cursor.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
 
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS wechat_bindings (
+                    openid TEXT PRIMARY KEY,
+                    unionid TEXT DEFAULT '',
+                    family_id TEXT DEFAULT '',
+                    member_name TEXT DEFAULT '',
+                    code TEXT DEFAULT '',
+                    session_key TEXT DEFAULT '',
+                    session_id TEXT DEFAULT '',
+                    last_login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS unionid TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS member_name TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS code TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS session_key TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS session_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cursor.execute("ALTER TABLE wechat_bindings ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP")
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS member_contacts (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    member_name TEXT NOT NULL,
+                    phone_number TEXT DEFAULT '',
+                    openid TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("ALTER TABLE member_contacts ADD COLUMN IF NOT EXISTS family_id TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE member_contacts ADD COLUMN IF NOT EXISTS member_name TEXT NOT NULL DEFAULT ''")
+            cursor.execute("ALTER TABLE member_contacts ADD COLUMN IF NOT EXISTS phone_number TEXT DEFAULT ''")
+            cursor.execute("ALTER TABLE member_contacts ADD COLUMN IF NOT EXISTS openid TEXT DEFAULT ''")
+            cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_member_contacts_family_member
+                ON member_contacts (family_id, member_name)
+            """)
+            cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_member_contacts_family_phone
+                ON member_contacts (family_id, phone_number)
+            """)
+
             # 财务交易表
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
@@ -417,6 +471,22 @@ class DatabaseManager:
                 )
             """)
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS chore_records (
+                    id SERIAL PRIMARY KEY,
+                    family_id TEXT DEFAULT '',
+                    record_type TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    assignee TEXT DEFAULT '',
+                    frequency TEXT DEFAULT '',
+                    due_date TEXT DEFAULT '',
+                    points NUMERIC(12,2) DEFAULT 0,
+                    status TEXT DEFAULT '',
+                    note TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS vehicle_records (
                     id SERIAL PRIMARY KEY,
                     family_id TEXT DEFAULT '',
@@ -499,12 +569,20 @@ class DatabaseManager:
 
     def add_shopping_item(self, name: str, quantity: str = '1', category: str = 'general',
                           priority: str = 'normal', added_by: str = '',
-                          status: str = 'pending', family_id: str = ''):
+                          status: str = 'pending', family_id: str = '', unit: str = '件',
+                          notes: str = '', current_stock: float = 0, target_stock: float = 0,
+                          restock_threshold: float = 0, is_favorite: bool = False):
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO shopping_items (family_id, name, quantity, category, priority, added_by, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (family_id or "", name, quantity, category, priority, added_by, status))
+                INSERT INTO shopping_items (
+                    family_id, name, quantity, category, priority, added_by, status,
+                    unit, notes, current_stock, target_stock, restock_threshold, is_favorite
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                family_id or "", name, quantity, category, priority, added_by, status,
+                unit, notes, current_stock, target_stock, restock_threshold, is_favorite,
+            ))
 
     def get_all_shopping_items(self, status: str = None, family_id: str = '') -> List[Dict]:
         with self.conn.cursor() as cursor:
@@ -1040,6 +1118,99 @@ class DatabaseManager:
                 VALUES (%s, %s, %s, %s, %s)
             """, (session_id, family_id or "", member_name, datetime.now().isoformat(), expires_at))
 
+    def upsert_wechat_binding(
+        self,
+        openid: str,
+        member_name: str,
+        family_id: str = "",
+        code: str = "",
+        session_key: str = "",
+        session_id: str = "",
+        unionid: str = "",
+        expires_at: Optional[str] = None,
+    ) -> Optional[Dict]:
+        if not openid:
+            return None
+        expires_at = expires_at or (datetime.now() + timedelta(hours=2)).isoformat()
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO wechat_bindings (
+                    openid, unionid, family_id, member_name, code,
+                    session_key, session_id, last_login_at, expires_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (openid) DO UPDATE SET
+                    unionid = EXCLUDED.unionid,
+                    family_id = EXCLUDED.family_id,
+                    member_name = EXCLUDED.member_name,
+                    code = EXCLUDED.code,
+                    session_key = EXCLUDED.session_key,
+                    session_id = EXCLUDED.session_id,
+                    last_login_at = CURRENT_TIMESTAMP,
+                    expires_at = EXCLUDED.expires_at,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            """, (
+                openid,
+                unionid or "",
+                family_id or "",
+                member_name or "",
+                code or "",
+                session_key or "",
+                session_id or "",
+                expires_at,
+            ))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_wechat_binding(self, openid: str) -> Optional[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM wechat_bindings WHERE openid = %s", (openid,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def upsert_member_contact(
+        self,
+        family_id: str,
+        member_name: str,
+        phone_number: str = "",
+        openid: str = "",
+    ) -> Optional[Dict]:
+        if not family_id or not member_name:
+            return None
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO member_contacts (family_id, member_name, phone_number, openid, updated_at)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (family_id, member_name) DO UPDATE SET
+                    phone_number = COALESCE(NULLIF(EXCLUDED.phone_number, ''), member_contacts.phone_number),
+                    openid = COALESCE(NULLIF(EXCLUDED.openid, ''), member_contacts.openid),
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            """, (family_id or "", member_name or "", phone_number or "", openid or ""))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_member_contact_by_phone(self, family_id: str, phone_number: str) -> Optional[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM member_contacts
+                WHERE family_id = %s AND phone_number = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+            """, (family_id or "", phone_number or ""))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def list_member_contacts(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM member_contacts
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
     def get_session(self, session_id: str) -> Optional[Dict]:
         with self.conn.cursor() as cursor:
             cursor.execute('SELECT * FROM sessions WHERE session_id = %s', (session_id,))
@@ -1422,6 +1593,44 @@ class DatabaseManager:
     def delete_travel_record(self, record_id: int, family_id: str = "") -> bool:
         with self.conn.cursor() as cursor:
             cursor.execute('DELETE FROM travel_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
+            return cursor.rowcount > 0
+
+    def add_chore_record(self, record_type: str, title: str, assignee: str = "", frequency: str = "",
+                         due_date: str = "", points: float = 0, status: str = "",
+                         note: str = "", family_id: str = "") -> int:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO chore_records (family_id, record_type, title, assignee, frequency, due_date, points, status, note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (family_id or "", record_type, title, assignee, frequency, due_date, points, status, note))
+            return cursor.fetchone()["id"]
+
+    def get_chore_records(self, family_id: str = "") -> List[Dict]:
+        with self.conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT * FROM chore_records
+                WHERE family_id = %s
+                ORDER BY updated_at DESC, created_at DESC
+            """, (family_id or "",))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_chore_record(self, record_id: int, family_id: str = "", **kwargs) -> bool:
+        if not kwargs:
+            return False
+        set_clause = ", ".join([f"{k} = %s" for k in kwargs])
+        values = list(kwargs.values()) + [record_id, family_id or ""]
+        with self.conn.cursor() as cursor:
+            cursor.execute(f"""
+                UPDATE chore_records
+                SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND family_id = %s
+            """, values)
+            return cursor.rowcount > 0
+
+    def delete_chore_record(self, record_id: int, family_id: str = "") -> bool:
+        with self.conn.cursor() as cursor:
+            cursor.execute('DELETE FROM chore_records WHERE id = %s AND family_id = %s', (record_id, family_id or ""))
             return cursor.rowcount > 0
 
     def add_vehicle_record(self, record_type: str, title: str, plate: str = "",

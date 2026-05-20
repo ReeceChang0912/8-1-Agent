@@ -124,6 +124,18 @@ class TravelRecordCreate(BaseModel):
     family_id: str = ""
 
 
+class ChoreRecordCreate(BaseModel):
+    record_type: str
+    title: str
+    assignee: str = ""
+    frequency: str = ""
+    due_date: str = ""
+    points: float = 0
+    status: str = ""
+    note: str = ""
+    family_id: str = ""
+
+
 @router.get("/modules/wedding")
 def list_wedding_items(family_id: str = ""):
     db = get_db()
@@ -558,4 +570,62 @@ def travel_stats(family_id: str = ""):
             and (travel_date := parse_date(item.get("travel_date") or ""))
             and 0 <= (travel_date - today).days <= 30
         ),
+    }
+
+
+@router.get("/modules/chores")
+def list_chore_records(family_id: str = ""):
+    db = get_db()
+    return {"items": db.get_chore_records(family_id=family_id) if db else []}
+
+
+@router.post("/modules/chores")
+def add_chore_record(data: ChoreRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": True, "id": db.add_chore_record(**data.model_dump())}
+
+
+@router.put("/modules/chores/{record_id}")
+def update_chore_record(record_id: int, data: ChoreRecordCreate):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.update_chore_record(record_id, **data.model_dump())}
+
+
+@router.delete("/modules/chores/{record_id}")
+def delete_chore_record(record_id: int, family_id: str = ""):
+    db = get_db()
+    if not db:
+        raise HTTPException(status_code=503, detail="数据库不可用")
+    return {"success": db.delete_chore_record(record_id, family_id=family_id)}
+
+
+@router.get("/modules/chores/stats")
+def chore_stats(family_id: str = ""):
+    db = get_db()
+    items = db.get_chore_records(family_id=family_id) if db else []
+    today = datetime.now().date()
+
+    def parse_date(value: str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    return {
+        "total_count": len(items),
+        "task_count": sum(1 for item in items if item.get("record_type") == "task"),
+        "rotation_count": sum(1 for item in items if item.get("record_type") == "rotation"),
+        "supply_count": sum(1 for item in items if item.get("record_type") == "supply"),
+        "checklist_count": sum(1 for item in items if item.get("record_type") == "checklist"),
+        "done_count": sum(1 for item in items if item.get("status") in {"已完成", "已打卡", "已补货"}),
+        "overdue_count": sum(
+            1
+            for item in items
+            if (due_date := parse_date(item.get("due_date") or "")) and due_date < today and item.get("status") not in {"已完成", "已打卡", "已补货"}
+        ),
+        "points_total": round(sum(float(item.get("points") or 0) for item in items), 2),
     }

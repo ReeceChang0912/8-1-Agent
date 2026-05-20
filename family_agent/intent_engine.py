@@ -121,6 +121,12 @@ class IntentRecognizer:
             if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
                 return {'intent': 'add_travel_record', 'confidence': 0.88, 'raw_text': message}
 
+        if any(k in message for k in ['家务', '值日', '打扫', '清洁', '补货', '轮值']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
+                return {'intent': 'query_chores', 'confidence': 0.9, 'raw_text': message}
+            if any(k in message for k in ['添加', '新增', '加一个', '记一条', '补一个']):
+                return {'intent': 'add_chore_record', 'confidence': 0.88, 'raw_text': message}
+
         if any(k in message for k in ['证件', '证照', '身份证', '护照', '驾驶证', '档案']):
             if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '进度']):
                 return {'intent': 'query_documents', 'confidence': 0.9, 'raw_text': message}
@@ -144,6 +150,10 @@ class IntentRecognizer:
                 return {'intent': 'query_finance', 'confidence': 0.88, 'raw_text': message}
             if any(k in message for k in ['记', '新增', '添加', '花了', '支出', '收入了', '赚了']):
                 return {'intent': 'add_finance_record', 'confidence': 0.86, 'raw_text': message}
+
+        if any(k in message for k in ['采购', '补货', '库存', '常买', '购物清单']):
+            if any(k in message for k in ['查看', '看看', '查询', '统计', '汇总', '情况', '还有什么']):
+                return {'intent': 'query_procurement', 'confidence': 0.88, 'raw_text': message}
         
         for intent, patterns in self.intent_patterns.items():
             for pattern in patterns:
@@ -231,6 +241,12 @@ class TaskExecutor:
         elif intent == 'add_travel_record':
             return self._handle_add_travel_record(message, family_id=family_id)
 
+        elif intent == 'query_chores':
+            return self._handle_query_chores(message, family_id=family_id)
+
+        elif intent == 'add_chore_record':
+            return self._handle_add_chore_record(message, family_id=family_id)
+
         elif intent == 'query_vehicle':
             return self._handle_query_vehicle(message, family_id=family_id)
 
@@ -245,6 +261,9 @@ class TaskExecutor:
 
         elif intent == 'query_finance':
             return self._handle_query_finance(message)
+
+        elif intent == 'query_procurement':
+            return self._handle_query_procurement(message, family_id=family_id)
 
         elif intent == 'add_finance_record':
             return self._handle_add_finance_record(message, user_id=user_id)
@@ -447,6 +466,23 @@ class TaskExecutor:
         self.agent.db.add_travel_record(record_type=record_type, title=title, family_id=family_id or "")
         return f"✅ 已新增旅行记录：{title}（{record_type}）"
 
+    def _handle_query_chores(self, message: str, family_id: str = None) -> str:
+        action = 'list' if any(k in message for k in ['列出', '列表', '明细', 'list']) else 'summary'
+        return self.agent._handle_chores_command(action, family_id=family_id)
+
+    def _handle_add_chore_record(self, message: str, family_id: str = None) -> str:
+        title = re.sub(r'.*(添加|新增|加一个|记一条|补一个)', '', message).strip('：: ，,。')
+        title = title or '新的家务记录'
+        record_type = 'task'
+        if any(k in message for k in ['轮值', '轮换', '值日']):
+            record_type = 'rotation'
+        elif any(k in message for k in ['补货', '采购', '耗材']):
+            record_type = 'supply'
+        elif any(k in message for k in ['清单', '检查', '巡检']):
+            record_type = 'checklist'
+        self.agent.db.add_chore_record(record_type=record_type, title=title, family_id=family_id or "")
+        return f"✅ 已新增家务记录：{title}（{record_type}）"
+
     def _handle_query_vehicle(self, message: str, family_id: str = None) -> str:
         action = 'list' if any(k in message for k in ['列出', '列表', '明细']) else 'summary'
         return self.agent._handle_vehicle_command(action, family_id=family_id)
@@ -492,6 +528,16 @@ class TaskExecutor:
 
     def _handle_query_finance(self, message: str) -> str:
         return self.agent._handle_finance_command('summary')
+
+    def _handle_query_procurement(self, message: str, family_id: str = None) -> str:
+        action = 'summary'
+        if any(k in message for k in ['补货', '库存低', '缺货']):
+            action = 'restock'
+        elif any(k in message for k in ['常买', '固定买']):
+            action = 'favorites'
+        elif any(k in message for k in ['列表', '明细', '列出']):
+            action = 'list'
+        return self.agent._handle_shopping_command(action, family_id=family_id)
 
     def _handle_add_finance_record(self, message: str, user_id: str = None) -> str:
         amount_match = re.search(r'(\d+(?:\.\d+)?)', message)

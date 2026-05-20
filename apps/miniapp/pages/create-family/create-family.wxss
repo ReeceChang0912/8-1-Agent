@@ -1,0 +1,79 @@
+.page {
+  min-height: 100vh;
+  padding: 52rpx 34rpx 42rpx;
+  box-sizing: border-box;
+  background: #f6f8f7;
+  color: #1e2b27;
+}
+
+.top-strip {
+  width: 96rpx;
+  height: 10rpx;
+  border-radius: 999rpx;
+  background: #d95d39;
+}
+
+.hero {
+  padding: 50rpx 0 34rpx;
+}
+
+.title {
+  font-size: 52rpx;
+  line-height: 1.12;
+  font-weight: 800;
+  color: #17231f;
+}
+
+.subtitle {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  line-height: 1.55;
+  color: #66726f;
+}
+
+.panel {
+  padding: 34rpx 28rpx 28rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  border: 1rpx solid #e1e7e4;
+  box-shadow: 0 14rpx 34rpx rgba(26, 37, 33, 0.07);
+}
+
+.field {
+  margin-bottom: 22rpx;
+}
+
+.field-label {
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+  color: #5f6b67;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 104rpx;
+  padding: 0 28rpx;
+  border-radius: 16rpx;
+  border: 1rpx solid #d8e0dc;
+  background: #f9fbfa;
+  font-size: 32rpx;
+  color: #17231f;
+}
+
+.primary {
+  width: 100%;
+  height: 106rpx;
+  line-height: 106rpx;
+  border-radius: 16rpx;
+  margin-top: 14rpx;
+  background: #0f8f62;
+  color: #ffffff;
+  font-size: 34rpx;
+  font-weight: 800;
+  box-shadow: 0 14rpx 26rpx rgba(15, 143, 98, 0.2);
+}
+
+.primary::after {
+  border: none;
+}

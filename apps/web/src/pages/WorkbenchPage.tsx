@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Row, Col, Spin, Typography, Tag, List, Space, Statistic, Divider, Empty, Alert } from 'antd'
+import { Button, Card, Row, Col, Spin, Typography, Tag, List, Space, Statistic, Divider, Empty, Alert } from 'antd'
 import {
   EnvironmentOutlined,
   ThunderboltOutlined,
@@ -14,6 +14,7 @@ import {
 import axios from 'axios'
 import dayjs from 'dayjs'
 import TaskNotification from '../components/TaskNotification'
+import { membersAPI } from '../services/api'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -55,6 +56,8 @@ const WorkbenchPage: React.FC = () => {
   const [investmentNews, setInvestmentNews] = useState<NewsItem[]>([])
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
   const [holidays, setHolidays] = useState<HolidayItem[]>([])
+  const [memberDigest, setMemberDigest] = useState<any>({ summary: {}, members: [] })
+  const [showOnboarding] = useState(() => !localStorage.getItem('family_onboarding_dismissed'))
 
   useEffect(() => {
     fetchAll()
@@ -89,9 +92,18 @@ const WorkbenchPage: React.FC = () => {
       .then(res => setHolidays(res.data.items))
       .catch(() => {})
 
+    membersAPI.getStats(localStorage.getItem('family_id') || '')
+      .then(res => setMemberDigest(res.data || { summary: {}, members: [] }))
+      .catch(() => {})
+
     // 等全部完成才移除初始加载状态
     await Promise.allSettled([fetchWeather, fetchAiNews, fetchInternetNews, fetchInvestNews, fetchBriefing, fetchHolidays])
     setInitialLoading(false)
+  }
+
+  const dismissOnboarding = () => {
+    localStorage.setItem('family_onboarding_dismissed', '1')
+    window.location.reload()
   }
 
   // 首次加载显示骨架屏
@@ -183,8 +195,69 @@ const WorkbenchPage: React.FC = () => {
 
   return (
     <div style={{ padding: 0 }}>
+      {showOnboarding && (
+        <Card style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #dbeafe', background: '#f8fbff' }}>
+          <Row gutter={[16, 16]} align="middle">
+            <Col xs={24} lg={12}>
+              <Space direction="vertical" size={6}>
+                <Text type="secondary">新手上手</Text>
+                <Title level={4} style={{ margin: 0 }}>先把家里的人、事、钱接进来</Title>
+                <Paragraph style={{ marginBottom: 0, color: '#475569' }}>
+                  先建家庭或邀请家人，再把会话、购物、家务和财务一起串起来，系统才会真正开始帮你省心。
+                </Paragraph>
+              </Space>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Row gutter={12}>
+                <Col xs={24} md={8}>
+                  <Card size="small" style={{ borderRadius: 8, height: '100%' }}>
+                    <Text strong>1. 建家庭</Text>
+                    <div style={{ marginTop: 6, color: '#64748b' }}>创建家庭号，先把主账号立住。</div>
+                  </Card>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Card size="small" style={{ borderRadius: 8, height: '100%' }}>
+                    <Text strong>2. 拉家人</Text>
+                    <div style={{ marginTop: 6, color: '#64748b' }}>生成邀请链接，直接分享给家里人。</div>
+                  </Card>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Card size="small" style={{ borderRadius: 8, height: '100%' }}>
+                    <Text strong>3. 先聊一件事</Text>
+                    <div style={{ marginTop: 6, color: '#64748b' }}>从购物、家务、备婚、财务里挑一个开始。</div>
+                  </Card>
+                </Col>
+              </Row>
+              <Space style={{ marginTop: 12 }}>
+                <Button type="primary" onClick={() => window.location.assign('/members')}>去邀请家人</Button>
+                <Button onClick={dismissOnboarding}>我知道了</Button>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       {/* 我的任务 */}
       <TaskNotification memberName={localStorage.getItem('member_name') || ''} />
+      <Card style={{ marginBottom: 20, borderRadius: 12 }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size={4}>
+              <Text type="secondary">家庭成员总览</Text>
+              <Title level={4} style={{ margin: 0 }}>{memberDigest.summary?.member_count || 0} 人在协同</Title>
+            </Space>
+          </Col>
+          <Col xs={12} md={4}><Statistic title="活跃成员" value={memberDigest.summary?.active_member_count || 0} /></Col>
+          <Col xs={12} md={4}><Statistic title="购物联动" value={memberDigest.summary?.shopping_items || 0} /></Col>
+          <Col xs={12} md={4}><Statistic title="家务联动" value={memberDigest.summary?.chore_items || 0} /></Col>
+          <Col xs={24} md={4}>
+            <Space direction="vertical" size={0}>
+              <Text type="secondary">当前最活跃</Text>
+              <Text strong>{memberDigest.summary?.top_member || '暂无'}</Text>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
       {/* 八点一刻 - 每日简报 */}
       {briefing && (

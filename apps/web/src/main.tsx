@@ -27,6 +27,7 @@ import DocumentsPage from './pages/DocumentsPage'
 import HousingPage from './pages/HousingPage'
 import HealthPage from './pages/HealthPage'
 import TravelPage from './pages/TravelPage'
+import ChoresPage from './pages/ChoresPage'
 import './styles/responsive.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -59,6 +60,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="modules/housing" element={<HousingPage />} />
             <Route path="modules/health" element={<HealthPage />} />
             <Route path="modules/travel" element={<TravelPage />} />
+            <Route path="modules/chores" element={<ChoresPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

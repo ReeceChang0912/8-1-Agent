@@ -10,8 +10,14 @@ router = APIRouter()
 class ShoppingItemCreate(BaseModel):
     name: str
     quantity: str = "1"
+    unit: str = "件"
     category: str = "general"
     priority: str = "normal"
+    notes: str = ""
+    current_stock: float = 0
+    target_stock: float = 0
+    restock_threshold: float = 0
+    is_favorite: bool = False
     family_id: str = ""
 
 
@@ -36,8 +42,14 @@ async def add_shopping_item(item_data: ShoppingItemCreate):
     agent.shopping_list.add_item(
         name=item_data.name,
         quantity=item_data.quantity,
+        unit=item_data.unit,
         category=item_data.category,
         priority=item_data.priority,
+        notes=item_data.notes,
+        current_stock=item_data.current_stock,
+        target_stock=item_data.target_stock,
+        restock_threshold=item_data.restock_threshold,
+        is_favorite=item_data.is_favorite,
         family_id=getattr(item_data, "family_id", "")
     )
     return {"success": True, "message": f"已添加: {item_data.name}"}

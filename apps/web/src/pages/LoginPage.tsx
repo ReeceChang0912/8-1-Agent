@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Card, Input, Button, Form, message, Tabs, Divider, Typography } from 'antd'
 import { UserOutlined, HomeOutlined, LoginOutlined, PlusOutlined } from '@ant-design/icons'
 import axios from 'axios'
+import { useSearchParams } from 'react-router-dom'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -13,6 +14,17 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('login')
+  const [searchParams] = useSearchParams()
+  const inviteCode = searchParams.get('invite')
+  const inviteFamilyId = searchParams.get('family_id') || ''
+  const [joinForm] = Form.useForm()
+
+  useEffect(() => {
+    if (inviteCode) {
+      setActiveTab('join')
+      joinForm.setFieldsValue({ invite_code: inviteCode, family_id: inviteFamilyId })
+    }
+  }, [inviteCode, inviteFamilyId, joinForm])
 
   // 登录表单
   const handleLogin = async (values: any) => {
@@ -89,7 +101,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     try {
       const response = await axios.post('/api/auth/join-family', {
         family_id: values.family_id,
-        member_name: values.member_name
+        member_name: values.member_name,
+        invite_code: values.invite_code || inviteCode || undefined,
       })
 
       if (response.data.success) {
@@ -265,17 +278,30 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             } 
             key="join"
           >
-            <Form onFinish={handleJoinFamily} layout="vertical">
+            <Form form={joinForm} onFinish={handleJoinFamily} layout="vertical">
               <Form.Item
                 name="family_id"
                 label="家庭号"
-                rules={[{ required: true, message: '请输入家庭号' }]}
+                rules={[{ required: !inviteCode, message: '请输入家庭号' }]}
               >
                 <Input 
                   prefix={<HomeOutlined />} 
                   placeholder="请输入家人分享的家庭号"
                   maxLength={6}
                   size="large"
+                  disabled={!!inviteCode}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="invite_code"
+                label="邀请码"
+                rules={[{ required: !!inviteCode, message: '请输入邀请码' }]}
+              >
+                <Input
+                  placeholder="扫码/链接加入时可自动带入"
+                  size="large"
+                  disabled={!!inviteCode}
                 />
               </Form.Item>
 

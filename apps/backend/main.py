@@ -4,6 +4,7 @@ FastAPI 后端服务 - 模块化路由版
 """
 import sys
 from pathlib import Path
+import os
 _backend_dir = str(Path(__file__).parent)
 _apps_dir = str(Path(__file__).parent.parent)
 _project_root = str(Path(__file__).parent.parent.parent)
@@ -25,6 +26,16 @@ from backend.routers import auth, chat, members, shopping, schedule, photos, kno
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+APP_ENV = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "development")).lower()
+DEBUG_ERRORS = os.getenv("DEBUG_ERRORS", "true" if APP_ENV != "production" else "false").lower() in {"1", "true", "yes", "on"}
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOW_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if not _cors_origins and APP_ENV != "production":
+    _cors_origins = ["*"]
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title="家庭智能管家 API",
@@ -45,6 +56,11 @@ class _ErrorLogMiddleware(BaseHTTPMiddleware):
             tb_str = ''.join(_tb.format_exception(type(exc), exc, exc.__traceback__))
             logger.error(f"中间件捕获 [{request.method} {request.url.path}]: {tb_str}")
             from fastapi.responses import JSONResponse
+            if not DEBUG_ERRORS:
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": "Internal Server Error"}
+                )
             return JSONResponse(
                 status_code=500,
                 content={"detail": f"{type(exc).__name__}: {str(exc)}", "traceback": tb_str}
@@ -53,9 +69,12 @@ class _ErrorLogMiddleware(BaseHTTPMiddleware):
 app.add_middleware(_ErrorLogMiddleware)
 
 # 配置 CORS
+if APP_ENV == "production" and not _cors_origins:
+    logger.warning("⚠️ 生产环境未配置 CORS_ALLOW_ORIGINS，浏览器跨域请求将被拒绝")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制具体域名
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

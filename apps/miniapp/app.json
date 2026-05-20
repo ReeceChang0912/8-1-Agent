@@ -1,5 +1,8 @@
 {
   "pages": [
+    "pages/auth/auth",
+    "pages/join-family/join-family",
+    "pages/create-family/create-family",
     "pages/home/home",
     "pages/modules/modules",
     "pages/webview/webview"

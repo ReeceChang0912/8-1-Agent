@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Card, Input, Button, List, Avatar, Space, message, Upload, Tag, Empty, Modal, Tooltip, Typography, Divider, Collapse, Badge } from 'antd'
 import { SendOutlined, UserOutlined, RobotOutlined, PaperClipOutlined, PictureOutlined, FileTextOutlined, ClockCircleOutlined, ShoppingCartOutlined, BookOutlined, PlusOutlined, DeleteOutlined, EditOutlined, MessageOutlined, CopyOutlined, ReloadOutlined, StarOutlined, StarFilled } from '@ant-design/icons'
-import { chatAPI } from '../services/api'
+import { chatAPI, membersAPI } from '../services/api'
 import axios from 'axios'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -77,15 +77,21 @@ const ChatPage: React.FC = () => {
     housing: null,
     health: null,
     travel: null,
+    chores: null,
     vehicle: null,
     fitness: null,
+    shopping: null,
     finance: null,
     memory: [],
+  })
+  const [memberSummary, setMemberSummary] = useState<any>({
+    summary: null,
+    members: [],
   })
   const inputRef = useRef<any>(null)
 
   const commands = [
-    { cmd: '/shopping', desc: '添加购物清单', icon: '🛒', example: '/shopping 牛奶和鸡蛋' },
+    { cmd: '/shopping', desc: '添加采购项/查看采购摘要', icon: '🛒', example: '/shopping summary' },
     { cmd: '/remind', desc: '创建日程提醒', icon: '📅', example: '/remind 明天下午3点开会' },
     { cmd: '/knowledge', desc: '搜索知识库', icon: '📚', example: '/knowledge 高血压注意事项' },
     { cmd: '/wedding', desc: '查看备婚摘要/列表', icon: '💍', example: '/wedding summary' },
@@ -94,10 +100,19 @@ const ChatPage: React.FC = () => {
     { cmd: '/housing', desc: '查看住房摘要/列表', icon: '🏠', example: '/housing summary' },
     { cmd: '/health', desc: '查看健康摘要/列表', icon: '💊', example: '/health summary' },
     { cmd: '/travel', desc: '查看旅行摘要/列表', icon: '🧳', example: '/travel summary' },
+    { cmd: '/chores', desc: '查看家务摘要/列表', icon: '🧹', example: '/chores summary' },
     { cmd: '/vehicle', desc: '查看车辆摘要/列表', icon: '🚗', example: '/vehicle summary' },
     { cmd: '/fitness', desc: '查看健身摘要/列表', icon: '🏋️', example: '/fitness list' },
     { cmd: '/finance', desc: '查看本月财务摘要', icon: '💰', example: '/finance summary' },
     { cmd: '/memory', desc: '搜索记忆', icon: '🧠', example: '/memory 车辆保养' },
+    { cmd: '/members', desc: '查看家庭成员联动', icon: '👥', example: '/members' },
+    { cmd: '/tasks', desc: '查看或分配家庭任务', icon: '✅', example: '/tasks 张三 买牛奶' },
+    { cmd: '/notifications', desc: '查看消息通知', icon: '🔔', example: '/notifications' },
+    { cmd: '/stats', desc: '查看协作统计', icon: '📊', example: '/stats' },
+    { cmd: '/smarthome', desc: '控制智能家居', icon: '🏠', example: '/smarthome 打开客厅灯' },
+    { cmd: '/skills', desc: '查看助手技能', icon: '⚡', example: '/skills' },
+    { cmd: '/mcp', desc: '查看可调用工具', icon: '🔧', example: '/mcp' },
+    { cmd: '/modules', desc: '查看全部管理模块', icon: '🧩', example: '/modules' },
     { cmd: '/photo', desc: '上传照片', icon: '📸', example: '/photo' },
     { cmd: '/help', desc: '查看所有指令', icon: '📋', example: '/help' },
   ]
@@ -132,6 +147,16 @@ const ChatPage: React.FC = () => {
       .sort((a, b) => Number(b.isPinned) - Number(a.isPinned) || b.updatedAtMs - a.updatedAtMs)
   }, [activeSessionId, familyId, pinnedSessionIds, sessionFilter, sessions, userId])
 
+  const sessionStats = useMemo(() => {
+    const pinnedCount = filteredSessions.filter(item => item.isPinned).length
+    const unreadCount = filteredSessions.filter(item => item.isUnread).length
+    return {
+      total: sessions.length,
+      pinned: pinnedCount,
+      unread: unreadCount,
+    }
+  }, [filteredSessions, sessions.length])
+
   const persistPinnedSessions = (nextIds: string[]) => {
     setPinnedSessionIds(nextIds)
     localStorage.setItem(`chat:pins:${userId}:${familyId}`, JSON.stringify(nextIds))
@@ -164,14 +189,23 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     loadSessions()
     loadModuleSummary()
+    loadMemberSummary()
   }, [])
 
   useEffect(() => {
     const sessionIdFromUrl = searchParams.get('session')
+    const promptFromUrl = searchParams.get('prompt')
     if (sessionIdFromUrl && sessionIdFromUrl !== activeSessionRef.current) {
       setActiveSessionId(sessionIdFromUrl)
       activeSessionRef.current = sessionIdFromUrl
       initialSessionSyncedRef.current = true
+    }
+    if (promptFromUrl && promptFromUrl !== inputValue) {
+      setInputValue(promptFromUrl)
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('prompt')
+      setSearchParams(nextParams, { replace: true })
+      setTimeout(() => inputRef.current?.focus(), 80)
     }
   }, [searchParams])
 
@@ -193,6 +227,15 @@ const ChatPage: React.FC = () => {
       setModuleSummary(response.data || {})
     } catch (error) {
       console.warn('加载聊天上下文摘要失败', error)
+    }
+  }
+
+  const loadMemberSummary = async () => {
+    try {
+      const response = await membersAPI.getStats(familyId)
+      setMemberSummary(response.data || { summary: null, members: [] })
+    } catch (error) {
+      console.warn('加载成员摘要失败', error)
     }
   }
 
@@ -343,7 +386,7 @@ const ChatPage: React.FC = () => {
 
   const handleRefreshCurrentSession = async () => {
     if (!activeSessionId) return
-    await Promise.all([loadSessions(), loadSessionHistory(activeSessionId), loadModuleSummary()])
+    await Promise.all([loadSessions(), loadSessionHistory(activeSessionId), loadModuleSummary(), loadMemberSummary()])
   }
 
   const togglePinSession = (sessionId: string) => {
@@ -351,6 +394,10 @@ const ChatPage: React.FC = () => {
       ? pinnedSessionIds.filter(id => id !== sessionId)
       : [sessionId, ...pinnedSessionIds]
     persistPinnedSessions(nextIds)
+  }
+
+  const clearPinnedSessions = () => {
+    persistPinnedSessions([])
   }
 
   // 初始化WebSocket连接(可选,失败时自动降级到HTTP)
@@ -590,8 +637,13 @@ const ChatPage: React.FC = () => {
     { icon: <MessageOutlined />, label: '看住房', text: '/housing summary' },
     { icon: <MessageOutlined />, label: '看健康', text: '/health summary' },
     { icon: <MessageOutlined />, label: '看旅行', text: '/travel summary' },
+    { icon: <MessageOutlined />, label: '看家务', text: '/chores summary' },
     { icon: <MessageOutlined />, label: '看车辆', text: '/vehicle summary' },
     { icon: <MessageOutlined />, label: '看健身', text: '/fitness summary' },
+    { icon: <MessageOutlined />, label: '成员联动', text: '/members' },
+    { icon: <MessageOutlined />, label: '我的任务', text: '/tasks list' },
+    { icon: <MessageOutlined />, label: '看通知', text: '/notifications' },
+    { icon: <MessageOutlined />, label: '看统计', text: '/stats' },
     { icon: <PictureOutlined />, label: '上传照片', action: 'upload' },
   ]
 
@@ -665,6 +717,7 @@ const ChatPage: React.FC = () => {
           border-radius: 8px;
           cursor: pointer;
           transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+          background: #fff;
         }
         .session-card:hover { background: #f6f8fb; border-color: #e6edf5; }
         .session-card.active { background: #eef6ff; border-color: #91caff; }
@@ -682,11 +735,14 @@ const ChatPage: React.FC = () => {
           .message-bubble { max-width: 85vw !important; }
         }
       `}</style>
-          <Card
+      <Card
         className="chat-session-sidebar"
-        title={<Space><MessageOutlined /><span>会话</span></Space>}
+        title={<Space><MessageOutlined /><span>会话列表</span></Space>}
         extra={
           <Space>
+            <Tooltip title="清空置顶">
+              <Button size="small" type="text" icon={<StarOutlined />} onClick={clearPinnedSessions} disabled={pinnedSessionIds.length === 0} />
+            </Tooltip>
             <Tooltip title="新建会话">
               <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleNewSession} />
             </Tooltip>
@@ -694,6 +750,20 @@ const ChatPage: React.FC = () => {
         }
         bodyStyle={{ flex: 1, overflow: 'auto', padding: 10 }}
       >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>总会话</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>{sessionStats.total}</div>
+          </div>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ fontSize: 11, color: '#b45309' }}>置顶</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#92400e' }}>{sessionStats.pinned}</div>
+          </div>
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ fontSize: 11, color: '#2563eb' }}>未读</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#1d4ed8' }}>{sessionStats.unread}</div>
+          </div>
+        </div>
         <Input
           allowClear
           size="small"
@@ -720,7 +790,7 @@ const ChatPage: React.FC = () => {
               <div
                 className={`session-card ${session.session_id === activeSessionId ? 'active' : ''}`}
                 onClick={() => handleSelectSession(session.session_id)}
-                style={{ padding: '10px 10px 9px', marginBottom: 6 }}
+                style={{ padding: '10px 10px 9px', marginBottom: 6, boxShadow: session.session_id === activeSessionId ? '0 6px 18px rgba(22,119,255,0.08)' : 'none' }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <MessageOutlined style={{ color: session.session_id === activeSessionId ? '#1677ff' : '#8c8c8c', marginTop: 3 }} />
@@ -746,11 +816,12 @@ const ChatPage: React.FC = () => {
                     <div style={{ marginTop: 4, color: '#667085', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {session.last_message || '暂无消息'}
                     </div>
-                    <div style={{ marginTop: 4, color: '#98a2b3', fontSize: 11, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                      <span>更新 {formatSessionTime(session.updated_at || session.created_at)}</span>
-                      {session.updated_at && <span>{new Date(session.updated_at).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>}
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {isPinned && <Tag color="gold" style={{ marginInlineEnd: 0 }}>置顶</Tag>}
+                      {isUnread && <Tag color="blue" style={{ marginInlineEnd: 0 }}>未读</Tag>}
+                      {session.session_id === activeSessionId && <Tag color="green" style={{ marginInlineEnd: 0 }}>当前</Tag>}
                     </div>
-                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#98a2b3', fontSize: 11 }}>
+                    <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#98a2b3', fontSize: 11, gap: 8 }}>
                       <span>{session.message_count || 0} 条消息</span>
                       <span>{formatSessionTime(session.updated_at || session.created_at)}</span>
                     </div>
@@ -1081,13 +1152,49 @@ const ChatPage: React.FC = () => {
       <Card
         className="chat-context-sidebar"
         title={<Space><MessageOutlined /><span>家庭上下文</span></Space>}
-        extra={<Button size="small" type="text" onClick={loadModuleSummary}>刷新</Button>}
+        extra={<Button size="small" type="text" onClick={() => Promise.all([loadModuleSummary(), loadMemberSummary()])}>刷新</Button>}
         bodyStyle={{ padding: 12, overflow: 'auto' }}
       >
         <Collapse
-          defaultActiveKey={['modules', 'quick', 'memory']}
+          defaultActiveKey={['members', 'modules', 'quick', 'memory']}
           ghost
           items={[
+            {
+              key: 'members',
+              label: '成员联动',
+              children: (
+                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>家庭成员</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/members')}>管理</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      成员 {memberSummary.summary?.member_count || 0} · 活跃 {memberSummary.summary?.active_member_count || 0} · 领跑 {memberSummary.summary?.top_member || '暂无'}
+                    </div>
+                  </Card>
+                  <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                    {(memberSummary.members || []).slice(0, 4).map((item: any) => (
+                      <Card key={item.name} size="small" style={{ borderRadius: 8 }}>
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <div>
+                            <Text strong>{item.name}</Text>
+                            <div style={{ fontSize: 11, color: '#98a2b3' }}>{item.role} · {item.permission}</div>
+                          </div>
+                          <Tag color={item.engagement_score > 0 ? 'blue' : 'default'}>{item.engagement_score}</Tag>
+                        </Space>
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#667085', lineHeight: 1.8 }}>
+                          采购 {item.shopping?.added || 0} · 家务 {item.chores?.assigned || 0} · 旅行 {item.travel?.participations || 0} · 任务 {item.tasks?.received || 0}
+                        </div>
+                      </Card>
+                    ))}
+                    {(memberSummary.members || []).length === 0 && (
+                      <Text type="secondary" style={{ fontSize: 12 }}>还没有成员统计数据</Text>
+                    )}
+                  </Space>
+                </Space>
+              ),
+            },
             {
               key: 'modules',
               label: '模块联动',
@@ -1145,6 +1252,24 @@ const ChatPage: React.FC = () => {
                     </Space>
                     <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
                       行程 {moduleSummary.travel?.itinerary_count || 0} · 预订 {moduleSummary.travel?.booking_count || 0} · 近期 {moduleSummary.travel?.upcoming_count || 0}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>家务</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/modules/chores')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      任务 {moduleSummary.chores?.task_count || 0} · 轮值 {moduleSummary.chores?.rotation_count || 0} · 已完成 {moduleSummary.chores?.done_count || 0}
+                    </div>
+                  </Card>
+                  <Card size="small" style={{ borderRadius: 8 }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>采购</Text>
+                      <Button size="small" type="link" onClick={() => navigate('/shopping')}>查看</Button>
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#667085' }}>
+                      待采购 {moduleSummary.shopping?.pending_count || 0} · 补货 {moduleSummary.shopping?.restock_count || 0} · 常买 {moduleSummary.shopping?.favorite_count || 0}
                     </div>
                   </Card>
                   <Card size="small" style={{ borderRadius: 8 }}>

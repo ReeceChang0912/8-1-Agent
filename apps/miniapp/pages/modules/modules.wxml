@@ -1,53 +1,92 @@
 <view class="page">
-  <view class="topbar">
-    <view class="topbar-title">模块中心</view>
-    <view class="topbar-action" bindtap="openHome">回主站</view>
+  <view class="hero">
+    <view class="hero-top">
+      <view>
+        <view class="eyebrow">Module Command Center</view>
+        <view class="title">模块中心</view>
+      </view>
+      <view class="topbar-action" bindtap="openHome">首页</view>
+    </view>
+    <view class="hero-desc">Web 端已有的管理能力，小程序这里统一入口；能直接打开，也能带着指令交给 Chat 处理。</view>
+    <view class="hero-actions">
+      <button class="primary-btn" catchtap="openChatCommand" data-prompt="/modules" data-title="全部模块">问 Chat</button>
+      <button class="ghost-btn" bindtap="openHome">返回首页</button>
+    </view>
+    <view class="summary">
+      <view class="summary-item">
+        <text class="num">{{readyCount}}</text>
+        <text class="label">已上线</text>
+      </view>
+      <view class="summary-item">
+        <text class="num">{{plannedCount}}</text>
+        <text class="label">规划中</text>
+      </view>
+      <view class="summary-item">
+        <text class="num">{{modules.length}}</text>
+        <text class="label">全功能</text>
+      </view>
+    </view>
   </view>
 
-  <view class="summary">
-    <view class="summary-item">
-      <text class="num">{{readyCount}}</text>
-      <text class="label">已上线</text>
+  <view class="section spotlight" wx:if="{{heroModules.length}}">
+    <view class="section-head">
+      <view>
+        <view class="section-title">推荐入口</view>
+        <view class="section-subtitle">先从中枢、成员和系统总览开始</view>
+      </view>
     </view>
-    <view class="summary-item">
-      <text class="num">{{plannedCount}}</text>
-      <text class="label">规划中</text>
-    </view>
+    <scroll-view class="spotlight-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="spotlight-track">
+        <block wx:for="{{heroModules}}" wx:key="id">
+          <view class="spot-card accent-{{item.accent}}" bindtap="openModule" data-module="{{item}}">
+            <view class="spot-kicker">{{item.category_label}}</view>
+            <view class="spot-title">{{item.title}}</view>
+            <view class="spot-desc">{{item.description}}</view>
+            <view class="spot-route">{{item.route_label}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
   </view>
 
-  <view class="section">
-    <view class="section-title">已上线</view>
-    <view class="module-list">
-      <block wx:for="{{readyModules}}" wx:key="id">
-        <view class="module-card" bindtap="openModule" data-module="{{item}}">
-          <view class="head">
-            <text class="title">{{item.title}}</text>
-            <text class="status {{item.status}}">已上线</text>
-          </view>
-          <view class="desc">{{item.description}}</view>
-          <view class="meta">
-            <text>{{item.category}}</text>
-            <text>{{item.owner}}</text>
-          </view>
+  <block wx:for="{{moduleGroups}}" wx:key="category">
+    <view class="section">
+      <view class="section-head">
+        <view>
+          <view class="section-title">{{item.title}}</view>
+          <view class="section-subtitle">{{item.note}}</view>
         </view>
-      </block>
+        <view class="section-count">{{item.items.length}}</view>
+      </view>
+      <view class="module-grid">
+        <block wx:for="{{item.items}}" wx:for-item="module" wx:key="id">
+          <view class="module-card accent-{{module.accent}}" bindtap="openModule" data-module="{{module}}">
+            <view class="module-kicker">{{module.category_label}}</view>
+            <view class="module-title">{{module.title}}</view>
+            <view class="module-desc">{{module.description}}</view>
+            <view class="module-route">{{module.route_label}}</view>
+            <view class="module-footer">
+              <text class="status {{module.status}}">{{module.status_text}}</text>
+              <view class="chat-chip" catchtap="openChatCommand" data-prompt="{{module.ai_prompt}}" data-title="{{module.title}}">Chat</view>
+            </view>
+          </view>
+        </block>
+      </view>
     </view>
-  </view>
+  </block>
 
-  <view class="section">
-    <view class="section-title">规划中</view>
-    <view class="module-list">
+  <view class="section" wx:if="{{plannedModules.length}}">
+    <view class="section-head">
+      <view>
+        <view class="section-title">规划中</view>
+        <view class="section-subtitle">后续补齐的家庭能力</view>
+      </view>
+    </view>
+    <view class="planned-list">
       <block wx:for="{{plannedModules}}" wx:key="id">
-        <view class="module-card muted" bindtap="openModule" data-module="{{item}}">
-          <view class="head">
-            <text class="title">{{item.title}}</text>
-            <text class="status planned">规划中</text>
-          </view>
-          <view class="desc">{{item.description}}</view>
-          <view class="meta">
-            <text>{{item.category}}</text>
-            <text>{{item.owner}}</text>
-          </view>
+        <view class="planned-card" bindtap="openModule" data-module="{{item}}">
+          <view class="planned-title">{{item.title}}</view>
+          <view class="planned-desc">{{item.description}}</view>
         </view>
       </block>
     </view>

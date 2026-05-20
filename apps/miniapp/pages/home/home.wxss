@@ -1,96 +1,283 @@
 .page {
   min-height: 100vh;
   padding: 28rpx;
-  background: linear-gradient(180deg, #f7f8fa 0%, #eef4ff 100%);
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(15, 118, 110, 0.16), transparent 30%),
+    radial-gradient(circle at 90% 8%, rgba(37, 99, 235, 0.14), transparent 32%),
+    linear-gradient(180deg, #f4fbf8 0%, #eef5ff 48%, #f8fafc 100%);
 }
 
 .hero {
-  padding: 32rpx 0 24rpx;
+  padding: 18rpx 0 22rpx;
+}
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18rpx;
 }
 
 .eyebrow {
-  font-size: 24rpx;
-  color: #6b7280;
+  font-size: 20rpx;
   letter-spacing: 2rpx;
+  color: #64748b;
   text-transform: uppercase;
 }
 
 .title {
-  margin-top: 12rpx;
+  margin-top: 6rpx;
   font-size: 46rpx;
-  font-weight: 700;
-  color: #111827;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.family-badge {
+  flex-shrink: 0;
+  padding: 12rpx 18rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1rpx solid #dbe8f4;
+  color: #0f766e;
+  font-size: 26rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
 }
 
 .desc {
-  margin-top: 16rpx;
+  margin-top: 18rpx;
   font-size: 28rpx;
-  line-height: 1.6;
-  color: #4b5563;
+  line-height: 1.7;
+  color: #475569;
 }
 
-.panel {
-  margin-top: 24rpx;
-  padding: 28rpx;
-  border-radius: 20rpx;
-  background: #ffffff;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.06);
+.hero-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 20rpx;
 }
 
-.panel-title {
+.hero-btn {
+  flex: 1;
+  height: 86rpx;
+  line-height: 86rpx;
+  border-radius: 18rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
+  color: #fff;
+  box-shadow: 0 18rpx 36rpx rgba(37, 99, 235, 0.2);
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.88);
+  color: #155e75;
+  border: 1rpx solid #d7e6f2;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.stat {
+  padding: 20rpx 16rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1rpx solid #e2edf7;
+}
+
+.stat-num {
   font-size: 30rpx;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 20rpx;
+  font-weight: 800;
+  color: #0f766e;
 }
 
-.primary {
-  background: #1677ff;
-  color: #ffffff;
-  border-radius: 16rpx;
-  font-size: 28rpx;
+.stat-label {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #64748b;
 }
 
-.shortcut-grid {
+.section {
+  margin-top: 20rpx;
+  padding: 26rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1rpx solid #edf2f7;
+  box-shadow: 0 16rpx 44rpx rgba(15, 23, 42, 0.07);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.section-subtitle {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.section-note {
+  font-size: 24rpx;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.action-section {
+  padding-right: 0;
+}
+
+.action-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.action-track {
+  display: flex;
+  gap: 14rpx;
+  padding-right: 26rpx;
+}
+
+.action-card {
+  flex: 0 0 246rpx;
+  width: 246rpx;
+  padding: 22rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(160deg, #102a43 0%, #0f766e 100%);
+  box-shadow: 0 16rpx 34rpx rgba(15, 42, 67, 0.16);
+  color: #fff;
+  white-space: normal;
+}
+
+.action-title {
+  font-size: 29rpx;
+  font-weight: 800;
+}
+
+.action-desc {
+  margin-top: 8rpx;
+  font-size: 23rpx;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.action-prompt {
+  margin-top: 14rpx;
+  padding: 8rpx 10rpx;
+  border-radius: 10rpx;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 20rpx;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
-.shortcut-card {
-  padding: 22rpx;
+.grid-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 132rpx;
+  padding: 22rpx 20rpx;
+  border-radius: 20rpx;
+  background: #f8fbff;
+  border: 1rpx solid #e6eef9;
+}
+
+.grid-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8rpx;
+  height: 100%;
+  background: #0f766e;
+}
+
+.accent-blue::before { background: #2563eb; }
+.accent-green::before { background: #16a34a; }
+.accent-amber::before { background: #d97706; }
+.accent-pink::before { background: #db2777; }
+.accent-red::before { background: #dc2626; }
+.accent-violet::before { background: #7c3aed; }
+.accent-cyan::before { background: #0891b2; }
+.accent-slate::before { background: #475569; }
+
+.grid-title {
+  font-size: 28rpx;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.grid-desc {
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  line-height: 1.48;
+  color: #64748b;
+}
+
+.chat-card {
+  padding: 20rpx;
   border-radius: 18rpx;
   background: #f8fafc;
   border: 1rpx solid #e5e7eb;
-  box-shadow: 0 6rpx 18rpx rgba(15, 23, 42, 0.04);
+  margin-bottom: 12rpx;
 }
 
-.shortcut-badge {
-  display: inline-flex;
-  padding: 4rpx 10rpx;
-  margin-bottom: 10rpx;
-  border-radius: 999rpx;
-  background: #e8f1ff;
-  color: #1677ff;
-  font-size: 20rpx;
-  font-weight: 600;
+.chat-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16rpx;
+  align-items: center;
 }
 
-.shortcut-title {
-  font-size: 30rpx;
-  font-weight: 600;
+.chat-title {
+  font-size: 28rpx;
+  font-weight: 800;
   color: #111827;
 }
 
-.shortcut-desc {
+.chat-count {
+  font-size: 22rpx;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.chat-desc {
   margin-top: 8rpx;
   font-size: 24rpx;
   line-height: 1.5;
-  color: #6b7280;
+  color: #4b5563;
 }
 
-.recent-panel {
-  padding-bottom: 12rpx;
+.chat-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
 }
 
 .recent-list {
@@ -101,14 +288,14 @@
 
 .recent-item {
   padding: 18rpx 20rpx;
-  border-radius: 16rpx;
+  border-radius: 18rpx;
   background: #f9fafb;
   border: 1rpx solid #eef2f7;
 }
 
 .recent-title {
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 800;
   color: #111827;
 }
 
@@ -116,4 +303,9 @@
   margin-top: 6rpx;
   font-size: 22rpx;
   color: #6b7280;
+}
+
+.hint {
+  font-size: 24rpx;
+  color: #64748b;
 }

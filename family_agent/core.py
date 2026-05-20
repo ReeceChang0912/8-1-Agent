@@ -322,8 +322,13 @@ class FamilyAgentCore:
                 return (
                     "🛒 请告诉我需要买什么，例如:\n"
                     "  `/shopping 牛奶和鸡蛋`\n"
-                    "  `/shopping 一袋大米`"
+                    "  `/shopping 一袋大米`\n"
+                    "  `/shopping summary`\n"
+                    "  `/shopping restock`"
                 )
+            normalized = args.strip().lower()
+            if normalized in {'summary', 'list', 'restock', 'favorites'}:
+                return self._handle_shopping_command(normalized, family_id=family_id)
             return self.task_executor._handle_add_shopping_item(f"买{args}", {}, family_id=family_id)
         elif cmd == '/remind':
             if not args:
@@ -355,6 +360,8 @@ class FamilyAgentCore:
             return self._handle_health_command(args, family_id=family_id)
         elif cmd == '/travel':
             return self._handle_travel_command(args, family_id=family_id)
+        elif cmd == '/chores':
+            return self._handle_chores_command(args, family_id=family_id)
         elif cmd == '/vehicle':
             return self._handle_vehicle_command(args, family_id=family_id)
         elif cmd == '/fitness':
@@ -363,10 +370,28 @@ class FamilyAgentCore:
             return self._handle_finance_command(args)
         elif cmd == '/memory':
             return self._handle_memory_command(args, user_id=user_id, family_id=family_id)
+        elif cmd == '/members':
+            return self._handle_members_command(args, family_id=family_id)
+        elif cmd == '/tasks':
+            return self._handle_tasks_command(args, user_id=user_id, family_id=family_id)
+        elif cmd == '/notifications':
+            return self._handle_notifications_command(args, user_id=user_id)
+        elif cmd == '/stats':
+            return self._handle_stats_command(family_id=family_id)
+        elif cmd == '/smarthome':
+            return self._handle_smarthome_command(args)
+        elif cmd == '/skills':
+            return self._handle_skills_command(args)
+        elif cmd == '/mcp':
+            return self._handle_mcp_command(args)
+        elif cmd == '/modules':
+            return self._handle_modules_command()
         elif cmd == '/help':
             return (
                 "📋 **可用指令:**\n"
-                "  `/shopping <物品>` - 添加购物清单\n"
+                "  `/shopping <物品>` - 添加采购项\n"
+                "  `/shopping summary` - 查看采购概览\n"
+                "  `/shopping restock` - 查看需补货\n"
                 "  `/remind <内容>` - 创建日程提醒\n"
                 "  `/knowledge <问题>` - 搜索知识库\n"
                 "  `/wedding list` - 查看备婚事项\n"
@@ -376,16 +401,64 @@ class FamilyAgentCore:
                 "  `/health list` - 查看健康记录\n"
                 "  `/travel summary` - 查看旅行概览\n"
                 "  `/travel list` - 查看旅行记录\n"
+                "  `/chores summary` - 查看家务概览\n"
+                "  `/chores list` - 查看家务记录\n"
                 "  `/vehicle list` - 查看车辆记录\n"
                 "  `/fitness list` - 查看健身记录\n"
                 "  `/finance summary` - 查看本月财务摘要\n"
                 "  `/memory <关键词>` - 搜索记忆\n"
+                "  `/members` - 查看家庭成员联动\n"
+                "  `/tasks` - 查看我的待办任务\n"
+                "  `/tasks 张三 买牛奶` - 给成员分配任务\n"
+                "  `/notifications` - 查看未读通知\n"
+                "  `/stats` - 查看家庭协作统计\n"
+                "  `/smarthome 打开客厅灯` - 控制智能家居\n"
+                "  `/skills` - 查看助手技能\n"
+                "  `/mcp` - 查看可调用工具\n"
+                "  `/modules` - 查看全部管理模块\n"
                 "  `/photo` - 上传照片\n"
                 "  `/help` - 显示此帮助\n\n"
                 "💡 **普通聊天**时，如果检测到相关意图，我会先询问你确认再执行。"
             )
         else:
             return f"未知指令: {cmd}\n输入 `/help` 查看可用指令列表。"
+
+    def _handle_shopping_command(self, args: str, family_id: str = None) -> str:
+        if not self.shopping_list:
+            return "采购模块当前不可用。"
+        action = (args or 'summary').strip().lower()
+        items = self.shopping_list.get_items(family_id=family_id or "")
+        if action == 'list':
+            pending_items = [item for item in items if item.get('status') != 'purchased']
+            if not pending_items:
+                return "当前没有待采购项目。"
+            lines = [f"- {item.get('name')} | {item.get('quantity')} {item.get('unit') or '件'} | {item.get('category') or '-'}" for item in pending_items[:8]]
+            return "待采购清单：\n" + "\n".join(lines)
+        if action == 'restock':
+            restock_items = [
+                item for item in items
+                if float(item.get('current_stock') or 0) <= float(item.get('restock_threshold') or 0)
+            ]
+            if not restock_items:
+                return "当前没有需要补货的项目。"
+            lines = [f"- {item.get('name')} | 库存 {item.get('current_stock') or 0} | 阈值 {item.get('restock_threshold') or 0}" for item in restock_items[:8]]
+            return "需补货项目：\n" + "\n".join(lines)
+        if action == 'favorites':
+            favorite_items = [item for item in items if item.get('is_favorite')]
+            if not favorite_items:
+                return "当前还没有常买项目。"
+            lines = [f"- {item.get('name')} | 目标库存 {item.get('target_stock') or 0} {item.get('unit') or '件'}" for item in favorite_items[:8]]
+            return "常买项目：\n" + "\n".join(lines)
+        summary = self.shopping_list.get_shopping_summary(family_id=family_id or "")
+        return (
+            f"采购概览：\n"
+            f"- 总数：{summary.get('total_items', 0)}\n"
+            f"- 待采购：{summary.get('unpurchased', 0)}\n"
+            f"- 已采购：{summary.get('purchased', 0)}\n"
+            f"- 需补货：{summary.get('restock_needed', 0)}\n"
+            f"- 常买品：{summary.get('favorites', 0)}\n"
+            f"- 继续查看可用 `/shopping list` 或 `/shopping restock`"
+        )
 
     def _handle_module_query(self, message: str, family_id: str = None) -> Optional[str]:
         if not self.db:
@@ -658,6 +731,53 @@ class FamilyAgentCore:
             f"- 继续查看可用 `/travel list`"
         )
 
+    def _handle_chores_command(self, args: str, family_id: str = None) -> str:
+        from datetime import datetime
+        if not self.db:
+            return "家务分工模块当前不可用，数据库还没有连上。"
+        action = (args or 'summary').strip()
+        items = self.db.get_chore_records(family_id=family_id or "")
+        if action.startswith('add '):
+            title = action[4:].strip()
+            if not title:
+                return "用法示例：`/chores add 周末大扫除`"
+            record_type = 'task'
+            if any(k in title for k in ['轮值', '轮换', '值日']):
+                record_type = 'rotation'
+            elif any(k in title for k in ['补货', '采购', '耗材']):
+                record_type = 'supply'
+            elif any(k in title for k in ['清单', '检查', '巡检']):
+                record_type = 'checklist'
+            self.db.add_chore_record(record_type=record_type, title=title, family_id=family_id or "")
+            return f"已新增家务记录：{title}（{record_type}）"
+        if action == 'list':
+            if not items:
+                return "当前还没有家务记录。"
+            lines = [f"- {item.get('title')} | {item.get('record_type')} | {item.get('assignee') or '-'} | {item.get('status') or '-'}" for item in items[:8]]
+            return "家务记录：\n" + "\n".join(lines)
+        today = datetime.now().date()
+        overdue = 0
+        for item in items:
+            try:
+                due_date = datetime.strptime(item.get('due_date') or '', "%Y-%m-%d").date()
+            except Exception:
+                due_date = None
+            if not due_date:
+                continue
+            if due_date < today and item.get('status') not in {'已完成', '已打卡', '已补货'}:
+                overdue += 1
+        return (
+            f"家务概览：\n"
+            f"- 总数：{len(items)}\n"
+            f"- 家务任务：{sum(1 for item in items if item.get('record_type') == 'task')}\n"
+            f"- 轮值安排：{sum(1 for item in items if item.get('record_type') == 'rotation')}\n"
+            f"- 补货事项：{sum(1 for item in items if item.get('record_type') == 'supply')}\n"
+            f"- 检查清单：{sum(1 for item in items if item.get('record_type') == 'checklist')}\n"
+            f"- 已完成：{sum(1 for item in items if item.get('status') in {'已完成', '已打卡', '已补货'})}\n"
+            f"- 已逾期：{overdue}\n"
+            f"- 继续查看可用 `/chores list`"
+        )
+
     def _handle_vehicle_command(self, args: str, family_id: str = None) -> str:
         if not self.db:
             return "车辆模块当前不可用，数据库还没有连上。"
@@ -734,6 +854,153 @@ class FamilyAgentCore:
             return f"没有找到和“{query}”相关的记忆。"
         lines = [f"- {item.get('content', '')[:80]}" for item in items[:8]]
         return "相关记忆：\n" + "\n".join(lines)
+
+    def _handle_members_command(self, args: str, family_id: str = None) -> str:
+        members = list(self.members.values())
+        if not members:
+            return "当前还没有家庭成员。可以先到成员管理页面添加或邀请家人。"
+
+        lines = []
+        for member in members[:12]:
+            permission = member.permission.value if hasattr(member.permission, "value") else str(member.permission)
+            lines.append(
+                f"- {member.name} | {member.role} | {member.side} | {permission}"
+            )
+        return (
+            f"家庭成员概览：\n"
+            f"- 成员数：{len(members)}\n"
+            f"- 可通过“成员管理”邀请、编辑或删除成员\n"
+            + "\n".join(lines)
+        )
+
+    def _handle_tasks_command(self, args: str, user_id: str = None, family_id: str = None) -> str:
+        if not self.task_manager:
+            return "任务模块当前不可用。"
+        current_user = user_id or "当前用户"
+        text = (args or "").strip()
+        normalized = text.lower()
+
+        if text and normalized not in {"summary", "list", "my", "sent", "all"}:
+            if normalized.startswith("assign "):
+                text = text[7:].strip()
+            parts = text.split(maxsplit=1)
+            if len(parts) >= 2:
+                task = self.task_manager.create_task(
+                    from_member=current_user,
+                    to_member=parts[0],
+                    content=parts[1],
+                    task_type="general",
+                    priority="normal",
+                    family_id=family_id or "",
+                )
+                if task:
+                    return f"已给 {parts[0]} 分配任务：{parts[1]}"
+                return "任务创建失败，数据库可能还没有连上。"
+            return "用法示例：`/tasks 张三 买牛奶` 或 `/tasks list`"
+
+        status = "all" if normalized == "all" else "pending"
+        tasks = self.task_manager.get_my_tasks(current_user, status, family_id=family_id or "")
+        sent_tasks = []
+        try:
+            sent_tasks = self.task_manager.get_sent_tasks(current_user, family_id=family_id or "")
+        except Exception:
+            sent_tasks = []
+        pending = [item for item in tasks if item.get("status") == "pending"]
+        if normalized in {"list", "my", "all"}:
+            shown = tasks[:8]
+            if not shown:
+                return "当前没有你的待办任务。"
+            lines = [
+                f"- {item.get('content')} | 来自 {item.get('from_member')} | {item.get('status')}"
+                for item in shown
+            ]
+            return "我的任务：\n" + "\n".join(lines)
+        return (
+            f"任务概览：\n"
+            f"- 我的待办：{len(pending)}\n"
+            f"- 我收到的任务：{len(tasks)}\n"
+            f"- 我发出的任务：{len(sent_tasks)}\n"
+            f"- 分配任务可用 `/tasks 成员名 任务内容`"
+        )
+
+    def _handle_notifications_command(self, args: str, user_id: str = None) -> str:
+        if not user_id:
+            return "请先登录成员账号，再查看通知。"
+        if not self.db:
+            return "通知模块当前不可用，数据库还没有连上。"
+        action = (args or "unread").strip().lower()
+        is_read = None if action in {"all", "list"} else False
+        notifications = self.db.get_notifications(user_id, is_read=is_read)
+        unread_count = len(self.db.get_notifications(user_id, is_read=False))
+        if not notifications:
+            return "当前没有未读通知。" if is_read is False else "当前没有通知。"
+        lines = [
+            f"- {item.get('title')} | {item.get('message')} | {item.get('priority')}"
+            for item in notifications[:8]
+        ]
+        return f"通知概览：未读 {unread_count} 条\n" + "\n".join(lines)
+
+    def _handle_stats_command(self, family_id: str = None) -> str:
+        shopping_items = self.shopping_list.get_items(family_id=family_id or "") if self.shopping_list else []
+        reminders = self.db.get_all_reminders(family_id=family_id or "") if self.db else self.reminders
+        tasks = self.db.get_tasks(family_id=family_id or "") if self.db else []
+        return (
+            f"家庭协作统计：\n"
+            f"- 成员：{len(self.members)}\n"
+            f"- 日程：{len(reminders)}\n"
+            f"- 采购项：{len(shopping_items)}\n"
+            f"- 任务：{len(tasks)}\n"
+            f"- 照片记忆：{len(getattr(self.photo_memory, 'photos', {}) or {})}"
+        )
+
+    def _handle_smarthome_command(self, args: str) -> str:
+        command = (args or "").strip()
+        if not command:
+            return "用法示例：`/smarthome 打开客厅灯` 或 `/smarthome 设置温度25度`"
+        return self.smart_home.execute_command(command)
+
+    def _handle_skills_command(self, args: str) -> str:
+        tools = self.tool_engine.list_tools() if self.tool_engine else []
+        if not tools:
+            return "当前没有可用技能。"
+        lines = [f"- {tool.get('name')}：{tool.get('description')}" for tool in tools[:12]]
+        return "助手技能：\n" + "\n".join(lines)
+
+    def _handle_mcp_command(self, args: str) -> str:
+        tools = self.mcp.list_tools() if self.mcp else []
+        if not tools:
+            return "当前没有可用 MCP 工具。"
+        lines = [f"- {tool.get('name')}：{tool.get('description')}" for tool in tools[:12]]
+        return "MCP 工具：\n" + "\n".join(lines)
+
+    def _handle_modules_command(self) -> str:
+        modules = [
+            ("工作台", "/"),
+            ("智能对话", "/chat"),
+            ("家庭成员", "/members"),
+            ("日程管理", "/schedule"),
+            ("购物清单", "/shopping"),
+            ("照片记忆", "/photos"),
+            ("知识库", "/knowledge"),
+            ("记忆管理", "/memory"),
+            ("技能中心", "/skills"),
+            ("智能家居", "/smarthome"),
+            ("MCP协议", "/mcp"),
+            ("统计信息", "/stats"),
+            ("消息通知", "/notifications"),
+            ("家庭财务", "/finance"),
+            ("备婚管理", "/modules/wedding"),
+            ("保险管理", "/modules/insurance"),
+            ("车辆管理", "/modules/vehicle"),
+            ("健身管理", "/modules/fitness"),
+            ("证件管理", "/modules/documents"),
+            ("住房管理", "/modules/housing"),
+            ("健康管理", "/modules/health"),
+            ("旅行管理", "/modules/travel"),
+            ("家务分工", "/modules/chores"),
+        ]
+        lines = [f"- {name}：{route}" for name, route in modules]
+        return "当前 Web / 小程序应覆盖的功能模块：\n" + "\n".join(lines)
 
     def _build_confirmation_message(self, intent: str, message: str) -> str:
         """构建确认询问消息"""

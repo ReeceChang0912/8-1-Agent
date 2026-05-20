@@ -1,0 +1,42 @@
+<view class="page">
+  <view class="top-strip"></view>
+
+  <view class="hero">
+    <view class="brand">
+      <view class="brand-mark">家</view>
+      <view class="brand-text">
+        <view class="title">回到家庭空间</view>
+        <view class="subtitle">任务、日程、采购和账目，都从这里开始。</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-top">
+      <view class="panel-title">登录</view>
+      <view class="panel-note">微信手机号优先</view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">家庭号</view>
+      <input class="input" placeholder="例如 FAM-2026" value="{{loginFamilyId}}" data-field="loginFamilyId" bindinput="setField" />
+    </view>
+    <view class="field">
+      <view class="field-label">成员名</view>
+      <input class="input" placeholder="首次登录需要填写" value="{{loginMemberName}}" data-field="loginMemberName" bindinput="setField" />
+    </view>
+
+    <button class="primary" loading="{{loading}}" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
+      微信手机号登录
+    </button>
+
+    <view class="alt-actions">
+      <view class="alt-link" bindtap="loginWithWechat">微信身份登录</view>
+      <view class="alt-link" bindtap="login">家庭号登录</view>
+      <view class="alt-link" bindtap="openJoinFamily">加入家庭</view>
+      <view class="alt-link" bindtap="openCreateFamily">创建家庭</view>
+    </view>
+  </view>
+
+  <view class="footnote">首次登录会把手机号绑定到成员名，之后可直接进入。</view>
+</view>

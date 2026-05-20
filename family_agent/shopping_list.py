@@ -86,13 +86,20 @@ class ShoppingListManager:
         assigned_to: str = "",
         notes: str = "",
         added_by: str = "",
-        family_id: str = ""
+        family_id: str = "",
+        current_stock: float = 0,
+        target_stock: float = 0,
+        restock_threshold: float = 0,
+        is_favorite: bool = False,
     ) -> ShoppingItem:
         """添加购物项"""
         if self.db:
             self.db.add_shopping_item(
                 name=name, quantity=quantity, category=category,
-                priority=priority, added_by=added_by, status='pending', family_id=family_id
+                priority=priority, added_by=added_by, status='pending', family_id=family_id,
+                unit=unit, notes=notes, current_stock=current_stock,
+                target_stock=target_stock, restock_threshold=restock_threshold,
+                is_favorite=is_favorite,
             )
         # 返回对象（用于兼容旧接口）
         return ShoppingItem(
@@ -134,7 +141,10 @@ class ShoppingListManager:
         """更新购物项"""
         if self.db:
             # 过滤出可更新的字段
-            allowed = {'name', 'quantity', 'category', 'priority', 'notes'}
+            allowed = {
+                'name', 'quantity', 'category', 'priority', 'notes', 'unit',
+                'current_stock', 'target_stock', 'restock_threshold', 'is_favorite', 'status'
+            }
             updates = {k: v for k, v in kwargs.items() if k in allowed}
             return self.db.update_shopping_item(item_id, family_id=family_id, **updates)
         return False
@@ -205,6 +215,12 @@ class ShoppingListManager:
             "purchased": purchased,
             "unpurchased": unpurchased,
             "completion_rate": purchased / total if total > 0 else 0,
+            "favorites": sum(1 for i in all_items if i.get('is_favorite')),
+            "restock_needed": sum(
+                1 for i in all_items
+                if float(i.get('current_stock') or 0) <= float(i.get('restock_threshold') or 0)
+            ),
+            "inventory_value_items": sum(1 for i in all_items if float(i.get('target_stock') or 0) > 0),
             "by_category": categories,
             "by_assignee": assignees
         }
