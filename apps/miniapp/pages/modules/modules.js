@@ -34,6 +34,7 @@ const MODULE_COMMANDS = {
   workbench: '/stats',
   chat: '/help',
   members: '/members',
+  tasks: '/tasks list',
   schedule: '/remind 明天晚上7点家庭会议',
   shopping: '/shopping summary',
   photos: '/photo',
@@ -167,6 +168,10 @@ Page({
   openModule(e) {
     const module = e.currentTarget.dataset.module
     if (!module) return
+    if (module.id === 'tasks') {
+      wx.navigateTo({ url: '/pages/tasks/tasks' })
+      return
+    }
     if (module.status === 'ready' && module.web_route) {
       this.openWeb(module.web_route, module.title || '')
       return

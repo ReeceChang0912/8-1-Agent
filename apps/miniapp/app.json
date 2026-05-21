@@ -4,6 +4,7 @@
     "pages/join-family/join-family",
     "pages/create-family/create-family",
     "pages/home/home",
+    "pages/tasks/tasks",
     "pages/modules/modules",
     "pages/webview/webview"
   ],

@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <view class="eyebrow">Family Tasks</view>
+      <view class="title">家庭任务</view>
+      <view class="subtitle">谁负责、谁完成，在这里一眼看清。</view>
+    </view>
+    <button class="hero-button" bindtap="openChatAssign">分配</button>
+  </view>
+
+  <view class="summary">
+    <view class="summary-item">
+      <view class="summary-num">{{pendingCount}}</view>
+      <view class="summary-label">待完成</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{completedCount}}</view>
+      <view class="summary-label">已完成</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{tasks.length}}</view>
+      <view class="summary-label">全部任务</view>
+    </view>
+  </view>
+
+  <view class="quick-card" bindtap="openChatList">
+    <view class="quick-title">用 Chat 管任务</view>
+    <view class="quick-desc">例如：/tasks 张三 买牛奶</view>
+  </view>
+
+  <view class="section-title">我的任务</view>
+  <view wx:if="{{loading}}" class="hint">正在加载任务...</view>
+  <view wx:elif="{{tasks.length === 0}}" class="empty">
+    <view class="empty-title">暂无任务</view>
+    <view class="empty-desc">可以点“分配”用 Chat 给家人安排事项。</view>
+  </view>
+  <view wx:else class="task-list">
+    <block wx:for="{{tasks}}" wx:key="id">
+      <view class="task-card {{item.status}}">
+        <view class="task-top">
+          <view class="task-content">{{item.content}}</view>
+          <view class="status {{item.status}}">{{item.status_text}}</view>
+        </view>
+        <view class="task-meta">
+          <text>来自 {{item.from_member || '-'}}</text>
+          <text>{{item.priority_text}}</text>
+        </view>
+        <button wx:if="{{item.status === 'pending'}}" class="done-btn" data-taskid="{{item.id}}" bindtap="completeTask">标记完成</button>
+      </view>
+    </block>
+  </view>
+</view>

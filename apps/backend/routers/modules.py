@@ -168,6 +168,16 @@ MODULES = [
         "owner": "platform",
     },
     {
+        "id": "tasks",
+        "title": "家庭任务",
+        "status": "ready",
+        "category": "core",
+        "description": "查看我的待办、完成任务，并用 Chat 给家人分配事项。",
+        "web_route": "/chat?prompt=/tasks%20list",
+        "miniapp_route": "/pages/tasks/tasks",
+        "owner": "platform",
+    },
+    {
         "id": "photos",
         "title": "照片记忆",
         "status": "ready",
