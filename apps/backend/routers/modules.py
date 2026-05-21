@@ -184,7 +184,7 @@ MODULES = [
         "category": "memory",
         "description": "家庭照片上传、识别、标签和检索。",
         "web_route": "/photos",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/photos/photos",
         "owner": "platform",
     },
     {

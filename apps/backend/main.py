@@ -171,11 +171,9 @@ def health_check():
 
 # 挂载静态文件服务(照片目录)
 photos_path = Path("photos")
-if photos_path.exists():
-    app.mount("/api/photos", StaticFiles(directory=str(photos_path)), name="photos")
-    logger.info("✅ 照片静态文件服务已挂载: /api/photos")
-else:
-    logger.warning("️ 照片目录不存在，跳过静态文件挂载")
+photos_path.mkdir(parents=True, exist_ok=True)
+app.mount("/api/photos", StaticFiles(directory=str(photos_path)), name="photos")
+logger.info("✅ 照片静态文件服务已挂载: /api/photos")
 
 # 挂载前端构建产物（生产环境）
 frontend_dist = Path(__file__).parent.parent / "web" / "dist"

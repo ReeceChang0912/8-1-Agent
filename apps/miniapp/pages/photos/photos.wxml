@@ -1,0 +1,149 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-copy">
+      <view class="eyebrow">Family Memory</view>
+      <view class="title">照片记忆</view>
+      <view class="subtitle">上传、搜索、分析和相册整理放在一起，适合把家庭照片从“堆着”变成“能找回”。</view>
+      <view class="hero-actions">
+        <button class="hero-button primary" loading="{{uploading}}" bindtap="chooseAndUpload">上传照片</button>
+        <button class="hero-button ghost" loading="{{analyzing}}" bindtap="analyzePhotos">智能分析</button>
+      </view>
+    </view>
+    <view class="hero-panel">
+      <view class="panel-label">当前照片</view>
+      <view class="panel-value">{{resultCountText}}</view>
+      <view class="panel-note">张可检索照片</view>
+    </view>
+  </view>
+
+  <view class="summary">
+    <block wx:for="{{statCards}}" wx:key="key">
+      <view class="summary-item">
+        <view class="summary-num">{{item.value}}</view>
+        <view class="summary-label">{{item.label}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">Chat 联动</view>
+        <view class="band-subtitle">用一句话搜索回忆、生成相册、整理故事</view>
+      </view>
+    </view>
+    <scroll-view class="prompt-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="prompt-track">
+        <block wx:for="{{chatPrompts}}" wx:key="prompt">
+          <view class="prompt-card" bindtap="openChatPrompt" data-prompt="{{item.prompt}}" data-title="{{item.title}}">
+            <view class="prompt-title">{{item.title}}</view>
+            <view class="prompt-desc">{{item.desc}}</view>
+            <view class="prompt-text">{{item.prompt}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">搜索照片</view>
+        <view class="band-subtitle">按描述、人物、标签或地点找回照片</view>
+      </view>
+      <view class="band-note" bindtap="clearSearch">清空</view>
+    </view>
+    <view class="search-row">
+      <input class="search-input" placeholder="搜索回忆、人物、标签" value="{{searchKeyword}}" bindinput="setSearch" bindconfirm="submitSearch" />
+      <button class="search-clear" bindtap="submitSearch">搜索</button>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">上传信息</view>
+        <view class="band-subtitle">照片说明、标签、人物和地点一起保存</view>
+      </view>
+      <view class="band-note" bindtap="clearUploadForm">清空</view>
+    </view>
+    <view class="field">
+      <view class="field-label">描述</view>
+      <input class="field-input" placeholder="例如 周末家宴 / 宝宝第一次游泳" value="{{uploadDescription}}" data-field="uploadDescription" bindinput="setUploadField" />
+    </view>
+    <view class="field">
+      <view class="field-label">标签</view>
+      <input class="field-input" placeholder="例如 生日,聚会,旅行" value="{{uploadTags}}" data-field="uploadTags" bindinput="setUploadField" />
+    </view>
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">人物</view>
+        <input class="field-input" placeholder="例如 妈妈,宝宝" value="{{uploadPeople}}" data-field="uploadPeople" bindinput="setUploadField" />
+      </view>
+      <view class="field-half">
+        <view class="field-label">地点</view>
+        <input class="field-input" placeholder="例如 家里 / 公园" value="{{uploadLocation}}" data-field="uploadLocation" bindinput="setUploadField" />
+      </view>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">照片墙</view>
+        <view class="band-subtitle">当前共 {{resultCountText}} 张</view>
+      </view>
+      <view class="band-note" bindtap="refresh">刷新</view>
+    </view>
+    <view wx:if="{{loading}}" class="hint">正在加载照片记忆...</view>
+    <view wx:elif="{{noPhotos}}" class="empty">
+      <view class="empty-title">暂无照片</view>
+      <view class="empty-desc">先上传一张，或者让 Chat 帮你整理相册。</view>
+    </view>
+    <view wx:else class="photo-grid">
+      <block wx:for="{{photos}}" wx:key="id">
+        <view class="photo-card" bindtap="previewPhoto" data-url="{{item.image_url}}">
+          <image class="photo-image" mode="aspectFill" src="{{item.image_url}}" />
+          <view class="photo-overlay">
+            <view class="photo-title">{{item.title_text}}</view>
+            <view class="photo-sub">{{item.short_date_text}} · {{item.location_text}}</view>
+          </view>
+          <view class="photo-meta">
+            <view class="meta-chip">{{item.people_text}}</view>
+            <view class="meta-chip">{{item.mood_text}}</view>
+          </view>
+          <view class="photo-chips">
+            <block wx:for="{{item.chips}}" wx:key="*this">
+              <view class="chip">{{item}}</view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">自动相册</view>
+        <view class="band-subtitle">按人物、事件和年份整理</view>
+      </view>
+      <view class="band-note">{{albumCountText}} 个相册</view>
+    </view>
+    <view wx:if="{{noAlbums}}" class="empty compact">
+      <view class="empty-title">暂无自动相册</view>
+      <view class="empty-desc">上传更多照片并让 AI 分析后，这里会自动出现。</view>
+    </view>
+    <view wx:else class="album-list">
+      <block wx:for="{{albums}}" wx:key="name">
+        <view class="album-card">
+          <view class="album-main">
+            <view class="album-title">{{item.name}}</view>
+            <view class="album-sub">{{item.type_text}}</view>
+          </view>
+          <view class="album-count">{{item.count_text}}</view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

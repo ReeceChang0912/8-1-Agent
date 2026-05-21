@@ -233,6 +233,10 @@ Page({
       wx.navigateTo({ url: '/pages/finance/finance' })
       return
     }
+    if (route === '/photos') {
+      wx.navigateTo({ url: '/pages/photos/photos' })
+      return
+    }
     if (LIFE_ROUTES[route]) {
       wx.navigateTo({ url: `/pages/life-module/life-module?id=${LIFE_ROUTES[route]}` })
       return

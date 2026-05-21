@@ -1,7 +1,7 @@
 """
 照片管理路由
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from pydantic import BaseModel
 from typing import Optional
 import shutil
@@ -31,8 +31,20 @@ async def get_photos(query: Optional[str] = None):
         return {"photos": [p.to_dict() for p in photos], "total": len(photos)}
 
 
+def parse_csv(value: str):
+    return [item.strip() for item in (value or "").replace("，", ",").split(",") if item.strip()]
+
+
 @router.post("/photos/upload")
-async def upload_photo(file: UploadFile = File(...)):
+async def upload_photo(
+    file: UploadFile = File(...),
+    description: str = Form(default=""),
+    tags: str = Form(default=""),
+    people: str = Form(default=""),
+    location: str = Form(default=""),
+    event: str = Form(default=""),
+    mood: str = Form(default=""),
+):
     try:
         photo_dir = Path("photos")
         photo_dir.mkdir(exist_ok=True)
@@ -50,7 +62,16 @@ async def upload_photo(file: UploadFile = File(...)):
             oss_url = oss.upload_file(str(file_path), remote_path) or ""
 
         # 添加到照片记忆
-        photo_id = agent.photo_memory.add_photo(str(file_path), oss_url=oss_url)
+        photo_id = agent.photo_memory.add_photo(
+            str(file_path),
+            description=description,
+            tags=parse_csv(tags),
+            people=parse_csv(people),
+            event=event,
+            location=location,
+            mood=mood,
+            oss_url=oss_url,
+        )
         return {
             "success": True,
             "filename": file.filename,
