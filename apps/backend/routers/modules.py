@@ -134,7 +134,7 @@ MODULES = [
         "category": "core",
         "description": "常买清单、库存、补货提醒、家庭采购协同。",
         "web_route": "/shopping",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/shopping/shopping",
         "owner": "platform",
     },
     {

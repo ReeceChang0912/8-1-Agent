@@ -13,6 +13,7 @@ class ShoppingItemCreate(BaseModel):
     unit: str = "件"
     category: str = "general"
     priority: str = "normal"
+    added_by: str = ""
     notes: str = ""
     current_stock: float = 0
     target_stock: float = 0
@@ -45,6 +46,7 @@ async def add_shopping_item(item_data: ShoppingItemCreate):
         unit=item_data.unit,
         category=item_data.category,
         priority=item_data.priority,
+        added_by=item_data.added_by,
         notes=item_data.notes,
         current_stock=item_data.current_stock,
         target_stock=item_data.target_stock,

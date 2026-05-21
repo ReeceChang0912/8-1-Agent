@@ -5,6 +5,7 @@
     "pages/create-family/create-family",
     "pages/home/home",
     "pages/tasks/tasks",
+    "pages/shopping/shopping",
     "pages/modules/modules",
     "pages/webview/webview"
   ],

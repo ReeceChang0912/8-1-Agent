@@ -143,7 +143,7 @@ class ShoppingListManager:
             # 过滤出可更新的字段
             allowed = {
                 'name', 'quantity', 'category', 'priority', 'notes', 'unit',
-                'current_stock', 'target_stock', 'restock_threshold', 'is_favorite', 'status'
+                'added_by', 'current_stock', 'target_stock', 'restock_threshold', 'is_favorite', 'status'
             }
             updates = {k: v for k, v in kwargs.items() if k in allowed}
             return self.db.update_shopping_item(item_id, family_id=family_id, **updates)
