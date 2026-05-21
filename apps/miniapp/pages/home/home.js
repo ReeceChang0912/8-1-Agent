@@ -19,8 +19,8 @@ const featureGroups = [
     note: '资料、照片、知识沉淀',
     items: [
       { title: '照片记忆', route: '/photos', desc: '上传、识别和检索', accent: 'pink' },
-      { title: '知识库', route: '/knowledge', desc: '家庭资料和问答', accent: 'violet' },
-      { title: '记忆管理', route: '/memory', desc: '偏好、事实、归档', accent: 'cyan' },
+      { title: '知识库', route: '__memory_knowledge__', desc: '家庭资料和问答', accent: 'violet' },
+      { title: '记忆管理', route: '__memory_memory__', desc: '偏好、事实、归档', accent: 'cyan' },
       { title: '证件管理', route: '__life_documents__', desc: '证件到期提醒', accent: 'amber' },
       { title: '健康管理', route: '__life_health__', desc: '体检、用药、复诊', accent: 'green' },
       { title: '保险管理', route: '__life_insurance__', desc: '保单、理赔、续保', accent: 'blue' },
@@ -75,6 +75,11 @@ const LIFE_ROUTES = {
   __life_documents__: 'documents',
   __life_health__: 'health',
   __life_travel__: 'travel',
+}
+
+const MEMORY_ROUTES = {
+  __memory_knowledge__: 'knowledge-memory',
+  __memory_memory__: 'knowledge-memory',
 }
 
 Page({
@@ -235,6 +240,10 @@ Page({
     }
     if (route === '/photos') {
       wx.navigateTo({ url: '/pages/photos/photos' })
+      return
+    }
+    if (MEMORY_ROUTES[route]) {
+      wx.navigateTo({ url: '/pages/knowledge-memory/knowledge-memory' })
       return
     }
     if (LIFE_ROUTES[route]) {

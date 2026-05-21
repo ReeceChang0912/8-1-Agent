@@ -194,7 +194,7 @@ MODULES = [
         "category": "memory",
         "description": "沉淀家庭资料、知识文档和可搜索问答。",
         "web_route": "/knowledge",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/knowledge-memory/knowledge-memory",
         "owner": "platform",
     },
     {
@@ -204,7 +204,7 @@ MODULES = [
         "category": "memory",
         "description": "管理家庭偏好、事实、会话摘要和长期记忆。",
         "web_route": "/memory",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/knowledge-memory/knowledge-memory",
         "owner": "platform",
     },
     {
