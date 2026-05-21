@@ -168,16 +168,14 @@ Page({
   openModule(e) {
     const module = e.currentTarget.dataset.module
     if (!module) return
-    if (module.id === 'tasks') {
-      wx.navigateTo({ url: '/pages/tasks/tasks' })
-      return
-    }
-    if (module.id === 'shopping') {
-      wx.navigateTo({ url: '/pages/shopping/shopping' })
-      return
-    }
-    if (module.id === 'schedule') {
-      wx.navigateTo({ url: '/pages/schedule/schedule' })
+    const miniappRoute = module.miniapp_route || ''
+    if (miniappRoute && miniappRoute !== '/pages/webview/webview') {
+      if (miniappRoute === '/pages/modules/modules') return
+      if (miniappRoute === '/pages/home/home') {
+        wx.redirectTo({ url: miniappRoute })
+        return
+      }
+      wx.navigateTo({ url: miniappRoute })
       return
     }
     if (module.status === 'ready' && module.web_route) {

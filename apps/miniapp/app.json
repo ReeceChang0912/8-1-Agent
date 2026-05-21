@@ -5,6 +5,8 @@
     "pages/create-family/create-family",
     "pages/home/home",
     "pages/tasks/tasks",
+    "pages/chores/chores",
+    "pages/members/members",
     "pages/shopping/shopping",
     "pages/schedule/schedule",
     "pages/modules/modules",

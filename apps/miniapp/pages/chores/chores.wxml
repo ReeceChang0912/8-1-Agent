@@ -1,0 +1,186 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-copy">
+      <view class="eyebrow">Household Coordination</view>
+      <view class="title">家务分工</view>
+      <view class="subtitle">任务、轮值、补货、检查放在同一页，谁负责、谁完成、谁还没做一眼能看清。</view>
+      <view class="hero-actions">
+        <button class="hero-button primary" bindtap="openChatSummary">问 Chat</button>
+        <button class="hero-button ghost" bindtap="openChatCreate">一句话新增</button>
+      </view>
+    </view>
+    <view class="hero-panel">
+      <view class="panel-label">成员联动</view>
+      <view class="panel-value">{{memberCount}}</view>
+      <view class="panel-note">个成员可直接分配</view>
+    </view>
+  </view>
+
+  <view class="summary">
+    <view class="summary-item">
+      <view class="summary-num">{{stats.total_count}}</view>
+      <view class="summary-label">记录总数</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{stats.done_count}}</view>
+      <view class="summary-label">已完成</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{stats.overdue_count}}</view>
+      <view class="summary-label">已逾期</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{stats.points_total}}</view>
+      <view class="summary-label">积分合计</view>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">Chat 联动</view>
+        <view class="band-subtitle">一句话把家务交给系统</view>
+      </view>
+    </view>
+    <scroll-view class="prompt-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="prompt-track">
+        <block wx:for="{{chatPrompts}}" wx:key="prompt">
+          <view class="prompt-card" bindtap="openChatPrompt" data-prompt="{{item.prompt}}" data-title="{{item.title}}">
+            <view class="prompt-title">{{item.title}}</view>
+            <view class="prompt-desc">{{item.desc}}</view>
+            <view class="prompt-text">{{item.prompt}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">类型筛选</view>
+        <view class="band-subtitle">先选分类，再看列表</view>
+      </view>
+      <view class="band-note" bindtap="refresh">刷新</view>
+    </view>
+    <scroll-view class="chip-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="chip-track">
+        <block wx:for="{{tabs}}" wx:key="key">
+          <view class="chip {{currentTab === item.key ? 'active' : ''}}" bindtap="switchTab" data-key="{{item.key}}">
+            <view class="chip-label">{{item.label}}</view>
+            <view class="chip-count">{{item.count}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+    <scroll-view class="chip-scroll member-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="chip-track">
+        <block wx:for="{{memberFilters}}" wx:key="value">
+          <view class="chip member {{memberFilter === item.value ? 'active' : ''}}" bindtap="setMemberFilter" data-value="{{item.value}}">
+            <view class="chip-label">{{item.label}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+    <view class="search-row">
+      <input class="search-input" placeholder="搜索标题、负责人、备注" value="{{searchKeyword}}" bindinput="setSearch" />
+      <button class="search-clear" bindtap="clearSearch">清空</button>
+    </view>
+  </view>
+
+  <view class="band form-band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">{{editingId ? '编辑' : '新增'}}{{formTypeLabel}}</view>
+        <view class="band-subtitle">{{formHint}}</view>
+      </view>
+      <view class="band-note" bindtap="resetForm">{{editingId ? '重置' : '清空'}}</view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">标题</view>
+      <input class="field-input" placeholder="例如 周末大扫除" value="{{title}}" data-field="title" bindinput="setField" />
+    </view>
+
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">负责人</view>
+        <picker wx:if="{{members.length}}" mode="selector" range="{{members}}" range-key="name" value="{{assigneeIndex}}" bindchange="changeAssignee">
+          <view class="picker-value">{{assigneeName || '未分配'}}</view>
+        </picker>
+        <view wx:else class="picker-value muted">暂无成员</view>
+      </view>
+      <view class="field-half">
+        <view class="field-label">状态</view>
+        <picker mode="selector" range="{{formStatusOptions}}" value="{{statusIndex}}" bindchange="changeStatus">
+          <view class="picker-value">{{status || formStatusOptions[0]}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">频率</view>
+        <input class="field-input" placeholder="例如 每周 / 每日" value="{{frequency}}" data-field="frequency" bindinput="setField" />
+      </view>
+      <view class="field-half">
+        <view class="field-label">日期</view>
+        <picker mode="date" value="{{dueDate}}" bindchange="changeDueDate">
+          <view class="picker-value">{{dueDate}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">积分</view>
+        <input class="field-input" type="number" placeholder="0" value="{{points}}" data-field="points" bindinput="setField" />
+      </view>
+      <view class="field-half form-action">
+        <button class="save-button" loading="{{saving}}" bindtap="saveItem">保存</button>
+      </view>
+    </view>
+
+    <view class="field">
+      <view class="field-label">备注</view>
+      <textarea class="field-textarea" placeholder="补充说明、地点、提醒方式" value="{{note}}" data-field="note" bindinput="setField" />
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">家务列表</view>
+        <view class="band-subtitle">当前共 {{visibleChores.length}} 条</view>
+      </view>
+    </view>
+    <view wx:if="{{loading}}" class="hint">正在加载家务分工...</view>
+    <view wx:elif="{{visibleChores.length === 0}}" class="empty">
+      <view class="empty-title">暂无记录</view>
+      <view class="empty-desc">可以直接新增，也可以让 Chat 帮你一句话创建。</view>
+    </view>
+    <view wx:else class="item-list">
+      <block wx:for="{{visibleChores}}" wx:key="id">
+        <view class="item-card type-{{item.type_key}} {{item.is_done ? 'done' : ''}} {{item.is_overdue ? 'overdue' : ''}}">
+          <view class="item-top">
+            <view class="item-main">
+              <view class="item-title">{{item.title}}</view>
+              <view class="item-sub">{{item.assignee_text}} · {{item.frequency_text}} · {{item.due_text}}</view>
+            </view>
+            <view class="status-pill {{item.status_class}}">{{item.status_text}}</view>
+          </view>
+          <view class="item-note">{{item.note_text}}</view>
+          <view class="item-meta">
+            <view class="meta-chip">{{item.type_label}}</view>
+            <view class="meta-chip">{{item.points_text}}</view>
+          </view>
+          <view class="item-actions">
+            <button class="action-btn primary" data-id="{{item.id}}" bindtap="toggleDone">{{item.is_done ? '撤回' : '完成'}}</button>
+            <button class="action-btn" data-id="{{item.id}}" bindtap="editItem">编辑</button>
+            <button class="action-btn danger" data-id="{{item.id}}" bindtap="removeItem">删除</button>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

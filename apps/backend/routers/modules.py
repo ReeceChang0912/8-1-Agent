@@ -121,11 +121,11 @@ MODULES = [
         "id": "chores",
         "title": "家务分工",
         "status": "ready",
-        "category": "life",
+        "category": "core",
         "description": "轮值表、家务分配、完成提醒、家庭协作。",
         "web_route": "/modules/chores",
-        "miniapp_route": "/pages/webview/webview",
-        "owner": "product",
+        "miniapp_route": "/pages/chores/chores",
+        "owner": "platform",
     },
     {
         "id": "shopping",
@@ -164,7 +164,7 @@ MODULES = [
         "category": "core",
         "description": "家庭号、邀请、角色权限、成员联动统计。",
         "web_route": "/members",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/members/members",
         "owner": "platform",
     },
     {

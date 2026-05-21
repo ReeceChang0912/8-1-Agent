@@ -6,11 +6,11 @@ const featureGroups = [
     note: '聊天、任务、日程、购物、家务',
     items: [
       { title: '智能对话', route: '/chat', desc: '一句话操作所有模块', accent: 'teal' },
-      { title: '家庭成员', route: '/members', desc: '邀请、角色和分工', accent: 'blue' },
+      { title: '家庭成员', route: '__native_members__', desc: '邀请、角色和分工', accent: 'blue' },
       { title: '家庭任务', route: '__native_tasks__', desc: '谁负责、谁完成', accent: 'red' },
       { title: '日程管理', route: '__native_schedule__', desc: '提醒、空闲时间、推荐', accent: 'amber' },
       { title: '购物清单', route: '__native_shopping__', desc: '库存、常买、补货', accent: 'green' },
-      { title: '家务分工', route: '/modules/chores', desc: '轮值、打卡、积分', accent: 'slate' },
+      { title: '家务分工', route: '__native_chores__', desc: '轮值、打卡、积分', accent: 'slate' },
       { title: '消息通知', route: '/notifications', desc: '任务和提醒通知', accent: 'blue' },
     ],
   },
@@ -163,6 +163,10 @@ Page({
 
   openWeb(route, title) {
     this.recordRecentItem(route, title)
+    if (route === '/modules') {
+      wx.navigateTo({ url: '/pages/modules/modules' })
+      return
+    }
     wx.navigateTo({
       url: `/pages/webview/webview?route=${encodeURIComponent(route)}&title=${encodeURIComponent(title)}`,
     })
@@ -204,6 +208,14 @@ Page({
     }
     if (route === '__native_schedule__') {
       wx.navigateTo({ url: '/pages/schedule/schedule' })
+      return
+    }
+    if (route === '__native_chores__') {
+      wx.navigateTo({ url: '/pages/chores/chores' })
+      return
+    }
+    if (route === '__native_members__') {
+      wx.navigateTo({ url: '/pages/members/members' })
       return
     }
     this.openWeb(route, title)
