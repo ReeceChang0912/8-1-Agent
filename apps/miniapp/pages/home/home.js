@@ -30,7 +30,7 @@ const featureGroups = [
     title: '生活模块',
     note: '新婚、车辆、住房、财务、旅行',
     items: [
-      { title: '家庭财务', route: '/finance', desc: '收支、预算、趋势', accent: 'green' },
+      { title: '家庭财务', route: '__native_finance__', desc: '收支、预算、趋势', accent: 'green' },
       { title: '备婚管理', route: '/modules/wedding', desc: '预算、供应商、待办', accent: 'pink' },
       { title: '车辆管理', route: '/modules/vehicle', desc: '保养、车险、费用', accent: 'slate' },
       { title: '健身管理', route: '/modules/fitness', desc: '训练、体重、饮食', accent: 'red' },
@@ -216,6 +216,10 @@ Page({
     }
     if (route === '__native_members__') {
       wx.navigateTo({ url: '/pages/members/members' })
+      return
+    }
+    if (route === '__native_finance__') {
+      wx.navigateTo({ url: '/pages/finance/finance' })
       return
     }
     this.openWeb(route, title)

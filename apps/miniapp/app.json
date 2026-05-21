@@ -7,6 +7,7 @@
     "pages/tasks/tasks",
     "pages/chores/chores",
     "pages/members/members",
+    "pages/finance/finance",
     "pages/shopping/shopping",
     "pages/schedule/schedule",
     "pages/modules/modules",

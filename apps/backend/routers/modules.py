@@ -44,7 +44,7 @@ MODULES = [
         "category": "core",
         "description": "收支记录、月度汇总、趋势分析、分类管理。",
         "web_route": "/finance",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/finance/finance",
         "owner": "finance",
     },
     {

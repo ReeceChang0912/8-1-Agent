@@ -1,0 +1,166 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-copy">
+      <view class="eyebrow">Family Finance</view>
+      <view class="title">家庭财务</view>
+      <view class="subtitle">本月收入、支出、结余和交易记录都集中在一起，适合手机上快速记一笔。</view>
+      <view class="hero-actions">
+        <button class="hero-button primary" bindtap="openQuickAdd">记一笔</button>
+        <button class="hero-button ghost" bindtap="openChatFinance">问 Chat</button>
+      </view>
+    </view>
+    <view class="hero-panel">
+      <view class="panel-label">{{monthLabel}}</view>
+      <view class="panel-value">{{summary.balance_text}}</view>
+      <view class="panel-note">本月结余</view>
+    </view>
+  </view>
+
+  <view class="summary">
+    <view class="summary-item">
+      <view class="summary-num income">{{summary.total_income_text}}</view>
+      <view class="summary-label">本月收入</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num expense">{{summary.total_expense_text}}</view>
+      <view class="summary-label">本月支出</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{summary.balance_text}}</view>
+      <view class="summary-label">本月结余</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{transactions.total}}</view>
+      <view class="summary-label">交易笔数</view>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">趋势概览</view>
+        <view class="band-subtitle">看近几个月收支变化</view>
+      </view>
+      <view class="band-note">{{chartLabel}}</view>
+    </view>
+    <scroll-view class="trend-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="trend-track">
+        <block wx:for="{{chartItems}}" wx:key="month_num">
+          <view class="trend-card">
+            <view class="trend-month">{{item.month_text}}</view>
+            <view class="trend-line income">{{item.income_text}}</view>
+            <view class="trend-line expense">{{item.expense_text}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">筛选</view>
+        <view class="band-subtitle">按月份、类型和分类查看</view>
+      </view>
+      <view class="band-note" bindtap="refresh">刷新</view>
+    </view>
+    <picker mode="date" fields="month" value="{{monthValue}}" bindchange="changeMonth">
+      <view class="picker-box">{{monthLabel}}</view>
+    </picker>
+    <picker mode="selector" range="{{transactionTypeOptions}}" range-key="label" value="{{filterTypeIndex}}" bindchange="changeTransactionType">
+      <view class="picker-box">{{filterTypeLabel}}</view>
+    </picker>
+    <picker mode="selector" range="{{filterCategoryOptions}}" range-key="label" value="{{filterCategoryIndex}}" bindchange="changeCategory">
+      <view class="picker-box">{{filterCategoryLabel}}</view>
+    </picker>
+  </view>
+
+  <view wx:if="{{formVisible}}" class="band form-band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">{{formTitle}}</view>
+        <view class="band-subtitle">适合快速记账，尽量少填字</view>
+      </view>
+      <view class="band-note" bindtap="openQuickAdd">{{formResetText}}</view>
+    </view>
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">类型</view>
+        <picker mode="selector" range="{{formTypeLabels}}" value="{{formTypeIndex}}" bindchange="changeFormType">
+          <view class="picker-box">{{formTypeLabel}}</view>
+        </picker>
+      </view>
+      <view class="field-half">
+        <view class="field-label">分类</view>
+        <picker mode="selector" range="{{formCategoryOptions}}" range-key="label" value="{{formCategoryIndex}}" bindchange="changeFormCategory">
+          <view class="picker-box">{{formCategoryLabel}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="field-row">
+      <view class="field-half">
+        <view class="field-label">金额</view>
+        <input class="field-input" type="digit" placeholder="0.00" value="{{formAmount}}" data-field="formAmount" bindinput="setField" />
+      </view>
+      <view class="field-half">
+        <view class="field-label">日期</view>
+        <picker mode="date" value="{{formDate}}" bindchange="changeFormDate">
+          <view class="picker-box">{{formDateLabel}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field-label">描述</view>
+      <input class="field-input" placeholder="例如 周末采购 / 收到工资" value="{{formDescription}}" data-field="formDescription" bindinput="setField" />
+    </view>
+    <view class="field">
+      <view class="field-label">记录人</view>
+      <input class="field-input" placeholder="默认使用当前成员" value="{{formCreatedBy}}" data-field="formCreatedBy" bindinput="setField" />
+    </view>
+    <view class="form-actions">
+      <button class="action-btn" bindtap="closeForm">取消</button>
+      <button class="action-btn primary" loading="{{saving}}" bindtap="saveTransaction">保存</button>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">交易记录</view>
+        <view class="band-subtitle">最近 {{transactionCountText}} 条</view>
+      </view>
+    </view>
+    <view wx:if="{{loading}}" class="hint">正在加载财务数据...</view>
+    <view wx:elif="{{noTransactions}}" class="empty">
+      <view class="empty-title">暂无交易记录</view>
+      <view class="empty-desc">可以先记一笔，或者让 Chat 帮你记账。</view>
+    </view>
+    <view wx:else class="tx-list">
+      <block wx:for="{{transactions.items}}" wx:key="id">
+        <view class="tx-card">
+          <view class="tx-top">
+            <view class="tx-main">
+              <view class="tx-title">{{item.category}}</view>
+              <view class="tx-sub">{{item.description_text}}</view>
+            </view>
+            <view class="tx-amount {{item.transaction_type}}">{{item.sign_text}}{{item.amount_text}}</view>
+          </view>
+          <view class="tx-meta">
+            <view class="meta-chip">{{item.type_text}}</view>
+            <view class="meta-chip">{{item.date_text}}</view>
+            <view class="meta-chip">{{item.creator_text}}</view>
+          </view>
+          <view class="tx-actions">
+            <button class="action-btn primary" data-id="{{item.id}}" bindtap="openEdit">编辑</button>
+            <button class="action-btn danger" data-id="{{item.id}}" bindtap="deleteTransaction">删除</button>
+          </view>
+        </view>
+      </block>
+    </view>
+    <view class="pager">
+      <button class="pager-btn" disabled="{{prevDisabled}}" bindtap="changePage" data-page="{{prevPage}}">上一页</button>
+      <view class="pager-text">{{pagerText}}</view>
+      <button class="pager-btn" disabled="{{nextDisabled}}" bindtap="changePage" data-page="{{nextPage}}">下一页</button>
+    </view>
+  </view>
+</view>
