@@ -1,0 +1,152 @@
+<view class="page {{moduleToneClass}}">
+  <view class="hero">
+    <view class="hero-copy">
+      <view class="eyebrow">{{moduleEyebrow}}</view>
+      <view class="title">{{moduleTitle}}</view>
+      <view class="subtitle">{{moduleSubtitle}}</view>
+      <view class="hero-actions">
+        <button class="hero-button primary" bindtap="openCreate">新增{{activeTypeLabel}}</button>
+        <button class="hero-button ghost" bindtap="openWebModule">Web 详情</button>
+      </view>
+    </view>
+    <view class="hero-panel">
+      <view class="panel-label">当前模块</view>
+      <view class="panel-value">{{moduleShortTitle}}</view>
+      <view class="panel-note">{{activeTypeLabel}} · {{visibleCountText}} 条</view>
+    </view>
+  </view>
+
+  <view class="module-switch">
+    <scroll-view class="module-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="module-track">
+        <block wx:for="{{moduleTabs}}" wx:key="id">
+          <view class="module-chip {{item.active_class}} {{item.tone_class}}" bindtap="switchModule" data-id="{{item.id}}">
+            <view class="module-chip-title">{{item.title}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="summary">
+    <block wx:for="{{statCards}}" wx:key="key">
+      <view class="summary-item">
+        <view class="summary-num">{{item.value}}</view>
+        <view class="summary-label">{{item.label}}</view>
+      </view>
+    </block>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">Chat 联动</view>
+        <view class="band-subtitle">一句话查询、归档和推进事项</view>
+      </view>
+    </view>
+    <scroll-view class="prompt-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="prompt-track">
+        <block wx:for="{{chatPrompts}}" wx:key="prompt">
+          <view class="prompt-card" bindtap="openChatPrompt" data-prompt="{{item.prompt}}" data-title="{{item.title}}">
+            <view class="prompt-title">{{item.title}}</view>
+            <view class="prompt-desc">{{item.desc}}</view>
+            <view class="prompt-text">{{item.prompt}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">类型筛选</view>
+        <view class="band-subtitle">{{activeHint}}</view>
+      </view>
+      <view class="band-note" bindtap="refresh">刷新</view>
+    </view>
+    <scroll-view class="type-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="type-track">
+        <block wx:for="{{typeTabs}}" wx:key="key">
+          <view class="type-chip {{item.active_class}}" bindtap="switchType" data-key="{{item.key}}">
+            <view class="type-label">{{item.label}}</view>
+            <view class="type-count">{{item.count}}</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+    <view class="search-row">
+      <input class="search-input" placeholder="搜索标题、负责人、备注" value="{{searchKeyword}}" bindinput="setSearch" />
+      <button class="search-clear" bindtap="clearSearch">清空</button>
+    </view>
+  </view>
+
+  <view wx:if="{{formVisible}}" class="band form-band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">{{formTitle}}</view>
+        <view class="band-subtitle">{{activeHint}}</view>
+      </view>
+      <view class="band-note" bindtap="resetForm">重置</view>
+    </view>
+
+    <block wx:for="{{formFields}}" wx:key="key">
+      <view class="field">
+        <view class="field-label">{{item.label}}</view>
+        <input wx:if="{{item.is_text}}" class="field-input" placeholder="{{item.placeholder}}" value="{{item.value}}" data-key="{{item.key}}" bindinput="setFormInput" />
+        <input wx:elif="{{item.is_number}}" class="field-input" type="digit" placeholder="{{item.placeholder}}" value="{{item.value}}" data-key="{{item.key}}" bindinput="setFormInput" />
+        <picker wx:elif="{{item.is_date}}" mode="date" value="{{item.value}}" data-key="{{item.key}}" bindchange="changeFormDate">
+          <view class="picker-value">{{item.display_value}}</view>
+        </picker>
+        <picker wx:elif="{{item.is_select}}" mode="selector" range="{{item.options}}" range-key="label" value="{{item.index}}" data-key="{{item.key}}" bindchange="changeFormSelect">
+          <view class="picker-value">{{item.display_value}}</view>
+        </picker>
+        <textarea wx:elif="{{item.is_textarea}}" class="field-textarea" placeholder="{{item.placeholder}}" value="{{item.value}}" data-key="{{item.key}}" bindinput="setFormInput" />
+      </view>
+    </block>
+
+    <view class="form-actions">
+      <button class="action-btn" bindtap="closeForm">取消</button>
+      <button class="action-btn primary" loading="{{saving}}" bindtap="saveRecord">保存</button>
+    </view>
+  </view>
+
+  <view class="band">
+    <view class="band-head">
+      <view>
+        <view class="band-title">{{activeTypeLabel}}列表</view>
+        <view class="band-subtitle">当前共 {{visibleCountText}} 条</view>
+      </view>
+      <view class="band-note" bindtap="openCreate">新增</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="hint">正在加载{{moduleShortTitle}}数据...</view>
+    <view wx:elif="{{noVisibleRecords}}" class="empty">
+      <view class="empty-title">暂无记录</view>
+      <view class="empty-desc">可以直接新增，也可以让 Chat 帮你整理。</view>
+    </view>
+    <view wx:else class="record-list">
+      <block wx:for="{{visibleRecords}}" wx:key="id">
+        <view class="record-card">
+          <view class="record-top">
+            <view class="record-main">
+              <view class="record-title">{{item.title_text}}</view>
+              <view class="record-sub">{{item.subtitle_text}}</view>
+            </view>
+            <view class="status-pill">{{item.status_text}}</view>
+          </view>
+          <view class="record-note">{{item.note_text}}</view>
+          <view class="record-chips">
+            <block wx:for="{{item.chips}}" wx:for-item="chip" wx:key="*this">
+              <view class="meta-chip">{{chip}}</view>
+            </block>
+          </view>
+          <view class="record-actions">
+            <button class="action-btn primary" data-id="{{item.id}}" bindtap="editRecord">编辑</button>
+            <button class="action-btn danger" data-id="{{item.id}}" bindtap="removeRecord">删除</button>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

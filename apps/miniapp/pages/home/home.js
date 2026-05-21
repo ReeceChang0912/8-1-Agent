@@ -21,9 +21,9 @@ const featureGroups = [
       { title: '照片记忆', route: '/photos', desc: '上传、识别和检索', accent: 'pink' },
       { title: '知识库', route: '/knowledge', desc: '家庭资料和问答', accent: 'violet' },
       { title: '记忆管理', route: '/memory', desc: '偏好、事实、归档', accent: 'cyan' },
-      { title: '证件管理', route: '/modules/documents', desc: '证件到期提醒', accent: 'amber' },
-      { title: '健康管理', route: '/modules/health', desc: '体检、用药、复诊', accent: 'green' },
-      { title: '保险管理', route: '/modules/insurance', desc: '保单、理赔、续保', accent: 'blue' },
+      { title: '证件管理', route: '__life_documents__', desc: '证件到期提醒', accent: 'amber' },
+      { title: '健康管理', route: '__life_health__', desc: '体检、用药、复诊', accent: 'green' },
+      { title: '保险管理', route: '__life_insurance__', desc: '保单、理赔、续保', accent: 'blue' },
     ],
   },
   {
@@ -31,11 +31,11 @@ const featureGroups = [
     note: '新婚、车辆、住房、财务、旅行',
     items: [
       { title: '家庭财务', route: '__native_finance__', desc: '收支、预算、趋势', accent: 'green' },
-      { title: '备婚管理', route: '/modules/wedding', desc: '预算、供应商、待办', accent: 'pink' },
-      { title: '车辆管理', route: '/modules/vehicle', desc: '保养、车险、费用', accent: 'slate' },
-      { title: '健身管理', route: '/modules/fitness', desc: '训练、体重、饮食', accent: 'red' },
-      { title: '住房管理', route: '/modules/housing', desc: '房租、物业、报修', accent: 'teal' },
-      { title: '旅行管理', route: '/modules/travel', desc: '行程、预订、打包', accent: 'blue' },
+      { title: '备婚管理', route: '__life_wedding__', desc: '预算、供应商、待办', accent: 'pink' },
+      { title: '车辆管理', route: '__life_vehicle__', desc: '保养、车险、费用', accent: 'slate' },
+      { title: '健身管理', route: '__life_fitness__', desc: '训练、体重、饮食', accent: 'red' },
+      { title: '住房管理', route: '__life_housing__', desc: '房租、物业、报修', accent: 'teal' },
+      { title: '旅行管理', route: '__life_travel__', desc: '行程、预订、打包', accent: 'blue' },
     ],
   },
   {
@@ -65,6 +65,17 @@ const aiActions = [
 
 const RECENT_ROUTE_KEY = 'family_management_recent_routes'
 const RECENT_CHAT_KEY = 'family_management_recent_chats'
+
+const LIFE_ROUTES = {
+  __life_wedding__: 'wedding',
+  __life_insurance__: 'insurance',
+  __life_vehicle__: 'vehicle',
+  __life_fitness__: 'fitness',
+  __life_housing__: 'housing',
+  __life_documents__: 'documents',
+  __life_health__: 'health',
+  __life_travel__: 'travel',
+}
 
 Page({
   data: {
@@ -220,6 +231,10 @@ Page({
     }
     if (route === '__native_finance__') {
       wx.navigateTo({ url: '/pages/finance/finance' })
+      return
+    }
+    if (LIFE_ROUTES[route]) {
+      wx.navigateTo({ url: `/pages/life-module/life-module?id=${LIFE_ROUTES[route]}` })
       return
     }
     this.openWeb(route, title)

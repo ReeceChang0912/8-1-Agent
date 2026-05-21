@@ -54,7 +54,7 @@ MODULES = [
         "category": "life",
         "description": "婚礼筹备、预算、待办、供应商、时间线。",
         "web_route": "/modules/wedding",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=wedding",
         "owner": "product",
     },
     {
@@ -64,7 +64,7 @@ MODULES = [
         "category": "life",
         "description": "保单、到期提醒、保障范围、家庭成员覆盖。",
         "web_route": "/modules/insurance",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=insurance",
         "owner": "product",
     },
     {
@@ -74,7 +74,7 @@ MODULES = [
         "category": "life",
         "description": "保养、年检、保险、加油、违章与费用记录。",
         "web_route": "/modules/vehicle",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=vehicle",
         "owner": "product",
     },
     {
@@ -84,7 +84,7 @@ MODULES = [
         "category": "life",
         "description": "训练计划、身体数据、餐饮记录、目标跟踪。",
         "web_route": "/modules/fitness",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=fitness",
         "owner": "product",
     },
     {
@@ -94,7 +94,7 @@ MODULES = [
         "category": "life",
         "description": "房贷、租房、物业、水电燃气、维修报修。",
         "web_route": "/modules/housing",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=housing",
         "owner": "product",
     },
     {
@@ -104,7 +104,7 @@ MODULES = [
         "category": "life",
         "description": "身份证、护照、驾照、房产证、到期提醒。",
         "web_route": "/modules/documents",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=documents",
         "owner": "product",
     },
     {
@@ -144,7 +144,7 @@ MODULES = [
         "category": "life",
         "description": "体检报告、用药、慢病跟踪、复诊安排。",
         "web_route": "/modules/health",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=health",
         "owner": "product",
     },
     {
@@ -154,7 +154,7 @@ MODULES = [
         "category": "life",
         "description": "行程、预算、打包清单、预订信息。",
         "web_route": "/modules/travel",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/life-module/life-module?id=travel",
         "owner": "product",
     },
     {
