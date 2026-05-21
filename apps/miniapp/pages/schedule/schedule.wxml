@@ -1,0 +1,78 @@
+<view class="page">
+  <view class="hero">
+    <view>
+      <view class="eyebrow">Family Schedule</view>
+      <view class="title">家庭日程</view>
+      <view class="subtitle">生日、纪念日、接送安排和重要提醒都放在一处。</view>
+    </view>
+    <button class="hero-button" bindtap="openChatReminder">Chat</button>
+  </view>
+
+  <view class="summary">
+    <view class="summary-item">
+      <view class="summary-num">{{upcomingCount}}</view>
+      <view class="summary-label">将到来</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{pastCount}}</view>
+      <view class="summary-label">已过去</view>
+    </view>
+    <view class="summary-item">
+      <view class="summary-num">{{reminders.length}}</view>
+      <view class="summary-label">全部日程</view>
+    </view>
+  </view>
+
+  <view class="add-card">
+    <picker mode="date" value="{{reminderDate}}" bindchange="onDateChange">
+      <view class="date-picker">{{reminderDate}}</view>
+    </picker>
+    <input class="event-input" placeholder="例如 晚上7点家庭聚餐" value="{{reminderEvent}}" data-field="reminderEvent" bindinput="setField" />
+    <button class="add-button" loading="{{submitting}}" bindtap="addReminder">添加提醒</button>
+  </view>
+
+  <view class="suggest-card" wx:if="{{recommendations.length || freeTimes.length}}">
+    <view class="suggest-title">今日建议</view>
+    <view class="suggest-row" wx:if="{{recommendations.length}}">
+      <text class="suggest-label">推荐</text>
+      <text class="suggest-text">{{recommendations[0].title || recommendations[0].event || recommendations[0].suggestion || '暂无推荐'}}</text>
+    </view>
+    <view class="suggest-row" wx:if="{{freeTimes.length}}">
+      <text class="suggest-label">空闲</text>
+      <text class="suggest-text">{{freeTimes[0].start_time || freeTimes[0].start || '-'}} - {{freeTimes[0].end_time || freeTimes[0].end || '-'}}</text>
+    </view>
+  </view>
+
+  <view class="section-title">最近将到来</view>
+  <view wx:if="{{loading}}" class="hint">正在加载日程...</view>
+  <view wx:elif="{{upcomingReminders.length === 0}}" class="empty">
+    <view class="empty-title">暂无日程</view>
+    <view class="empty-desc">可以直接添加，也可以用 Chat 一句话创建提醒。</view>
+  </view>
+  <view wx:else class="schedule-list">
+    <block wx:for="{{upcomingReminders}}" wx:key="id">
+      <view class="schedule-card">
+        <view class="date-box">{{item.date_text}}</view>
+        <view class="schedule-main">
+          <view class="schedule-event">{{item.event}}</view>
+          <view class="schedule-meta">{{item.member_text}}</view>
+        </view>
+        <button class="delete-btn" data-id="{{item.id}}" bindtap="removeReminder">删除</button>
+      </view>
+    </block>
+  </view>
+
+  <view class="section-title past-title" wx:if="{{pastReminders.length}}">历史日程</view>
+  <view class="schedule-list" wx:if="{{pastReminders.length}}">
+    <block wx:for="{{pastReminders}}" wx:key="id">
+      <view class="schedule-card past">
+        <view class="date-box">{{item.date_text}}</view>
+        <view class="schedule-main">
+          <view class="schedule-event">{{item.event}}</view>
+          <view class="schedule-meta">{{item.member_text}}</view>
+        </view>
+        <button class="delete-btn" data-id="{{item.id}}" bindtap="removeReminder">删除</button>
+      </view>
+    </block>
+  </view>
+</view>

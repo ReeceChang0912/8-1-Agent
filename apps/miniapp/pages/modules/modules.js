@@ -176,6 +176,10 @@ Page({
       wx.navigateTo({ url: '/pages/shopping/shopping' })
       return
     }
+    if (module.id === 'schedule') {
+      wx.navigateTo({ url: '/pages/schedule/schedule' })
+      return
+    }
     if (module.status === 'ready' && module.web_route) {
       this.openWeb(module.web_route, module.title || '')
       return

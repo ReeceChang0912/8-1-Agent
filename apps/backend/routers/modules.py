@@ -114,7 +114,7 @@ MODULES = [
         "category": "core",
         "description": "生日、纪念日、节假日、接送安排与同步提醒。",
         "web_route": "/schedule",
-        "miniapp_route": "/pages/webview/webview",
+        "miniapp_route": "/pages/schedule/schedule",
         "owner": "platform",
     },
     {

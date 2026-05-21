@@ -6,6 +6,7 @@
     "pages/home/home",
     "pages/tasks/tasks",
     "pages/shopping/shopping",
+    "pages/schedule/schedule",
     "pages/modules/modules",
     "pages/webview/webview"
   ],
